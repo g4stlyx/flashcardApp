@@ -13,14 +13,21 @@ profile page (password change, some profile edit parts)
 my friends page (including sending friend request and seeing requests)
 * my friends (public or open to me) sets
 
-something like "flow" in instagram/x or other social platforms
+something like "flow"/feed in instagram/x or other social platforms
 * every set would have tags, when i create or fav sets, that kind of sets would appear to me more.
 
+### TODO
+* Admin panel to manage tags and users
+* activity_logs to log user actions
+* audit_logs to log admin actions
+* REST API for future mobile app
 
 ### TODO (a bit extra)
-* Admin panel to manage tags and users
 * Export set to PDF or CSV
+* levels of admins (0, 1, 2) -like mod, admin, root etc.-
+* prevent abuse on “most viewed sets”
+    * Add an IP hash
+    * Add a UNIQUE(user_id, set_id, DATE(viewed_at)) to limit one view per day per user per set
 * Notifications (new friend request, someone liked your set, etc.)
 * Flashcard "Study Mode" with one-by-one flip animation
 * Spaced repetition tracking (basic implementation)
-* REST API for future mobile app
