@@ -1,0 +1,58 @@
+@{
+    ViewData["Title"] = "Database Connection Info";
+}
+
+<div class="container">
+    <h1>Database Connection Information</h1>
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4>Environment Variables from .env File</h4>
+        </div>
+        <div class="card-body">
+            <table class="table">
+                <tr>
+                    <th>Server</th>
+                    <td>@ViewBag.ConnectionInfo.Server</td>
+                </tr>
+                <tr>
+                    <th>Database</th>
+                    <td>@ViewBag.ConnectionInfo.Database</td>
+                </tr>
+                <tr>
+                    <th>User</th>
+                    <td>@ViewBag.ConnectionInfo.User</td>
+                </tr>
+                <tr>
+                    <th>Port</th>
+                    <td>@ViewBag.ConnectionInfo.Port</td>
+                </tr>
+                <tr>
+                    <th>Password</th>
+                    <td>(hidden for security)</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h4>Database Connection Test</h4>
+        </div>
+        <div class="card-body">
+            @if (ViewBag.Success)
+            {
+                <div class="alert alert-success">
+                    <i class="fa fa-check-circle"></i> Database connection is working!
+                    <p>Number of users in the database: @ViewBag.UserCount</p>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-danger">
+                    <i class="fa fa-times-circle"></i> Failed to connect to the database.
+                    <p>Error: @ViewBag.Error</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>

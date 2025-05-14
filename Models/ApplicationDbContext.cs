@@ -21,12 +21,48 @@ namespace flashcardApp.Models
         {
             base.OnModelCreating(modelBuilder);
 
+            // Map entities to existing tables with snake_case naming
+            modelBuilder.Entity<User>().ToTable("users");
+            modelBuilder.Entity<FlashcardSet>().ToTable("flashcard_sets");
+            modelBuilder.Entity<Flashcard>().ToTable("flashcards");
+            modelBuilder.Entity<Tag>().ToTable("tags");
+            modelBuilder.Entity<FavouriteSet>().ToTable("favourite_sets");
+            modelBuilder.Entity<FriendRequest>().ToTable("friend_requests");
+            modelBuilder.Entity<Friend>().ToTable("friends");
+            modelBuilder.Entity<SetView>().ToTable("set_views");
+
             // Configure composite keys
             modelBuilder.Entity<FavouriteSet>()
                 .HasKey(fs => new { fs.UserId, fs.SetId });
 
             modelBuilder.Entity<Friend>()
                 .HasKey(f => new { f.UserId1, f.UserId2 });
+
+            // Column name mappings for User
+            modelBuilder.Entity<User>()
+                .Property(u => u.Username).HasColumnName("username");
+            modelBuilder.Entity<User>()
+                .Property(u => u.Email).HasColumnName("email");
+            modelBuilder.Entity<User>()
+                .Property(u => u.PasswordHash).HasColumnName("password_hash");
+            modelBuilder.Entity<User>()
+                .Property(u => u.Salt).HasColumnName("salt");
+            modelBuilder.Entity<User>()
+                .Property(u => u.Bio).HasColumnName("bio");
+            modelBuilder.Entity<User>()
+                .Property(u => u.FirstName).HasColumnName("first_name");
+            modelBuilder.Entity<User>()
+                .Property(u => u.LastName).HasColumnName("last_name");
+            modelBuilder.Entity<User>()
+                .Property(u => u.PhoneNumber).HasColumnName("phone_number");
+            modelBuilder.Entity<User>()
+                .Property(u => u.ProfilePictureUrl).HasColumnName("profile_picture_url");
+            modelBuilder.Entity<User>()
+                .Property(u => u.IsAdmin).HasColumnName("is_admin");
+            modelBuilder.Entity<User>()
+                .Property(u => u.CreatedAt).HasColumnName("created_at");
+            modelBuilder.Entity<User>()
+                .Property(u => u.UpdatedAt).HasColumnName("updated_at");
 
             // Configure relationships
             modelBuilder.Entity<FavouriteSet>()
