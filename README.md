@@ -17,6 +17,7 @@ something like "flow"/feed in instagram/x or other social platforms
 * every set would have tags, when i create or fav sets, that kind of sets would appear to me more.
 
 ### TODO
+* 404, 403 etc. pages
 * Admin panel to manage tags and users
 * activity_logs to log user actions
 * audit_logs to log admin actions

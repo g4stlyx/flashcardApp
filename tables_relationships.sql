@@ -3,11 +3,12 @@ CREATE TABLE users (
     username VARCHAR(100) NOT NULL UNIQUE,
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
+    salt CHAR(64) NOT NULL,
     bio TEXT,
     first_name VARCHAR(100),
     last_name VARCHAR(100),
     phone_number VARCHAR(20),
-    profile_picture_url TEXT;
+    profile_picture_url TEXT,
     is_admin BOOLEAN NOT NULL DEFAULT FALSE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
