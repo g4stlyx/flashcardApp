@@ -1,0 +1,83 @@
+@model flashcardApp.Models.FlashcardSet
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <!-- Set Details -->
+        <div class="col-md-4">
+            <div class="card mb-4">
+                @if (!string.IsNullOrEmpty(Model.CoverImageUrl))
+                {
+                    <img src="@Model.CoverImageUrl" class="card-img-top" alt="@Model.Title" style="height: 180px; object-fit: cover;">
+                }
+                else
+                {
+                    <div class="card-img-top bg-secondary text-white d-flex align-items-center justify-content-center" style="height: 180px;">
+                        <i class="bi bi-card-heading" style="font-size: 3rem;"></i>
+                    </div>
+                }
+                <div class="card-body">
+                    <h2 class="card-title">@Model.Title</h2>
+                    <p class="card-text">@Model.Description</p>
+                    <div class="mb-3">
+                        <strong>Sahibi:</strong> @Model.User.Username<br />
+                        <strong>Oluşturulma Tarihi:</strong> @Model.CreatedAt.ToString("MMM dd, yyyy")<br />
+                        <strong>Kartlar:</strong> @Model.Flashcards.Count<br />
+                        <strong>Görünürlük:</strong> 
+                        <span class="badge @(Model.Visibility == Visibility.Public ? "bg-success" : 
+                                           Model.Visibility == Visibility.Friends ? "bg-info" : "bg-secondary")">
+                            @Model.Visibility
+                        </span>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <a asp-action="Study" asp-route-id="@Model.Id" class="btn btn-success">Seti Çalış</a>
+                        @if (User.Identity.IsAuthenticated && int.TryParse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out int userId) && userId == Model.UserId)
+                        {
+                            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-primary">Seti düzenle</a>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Flashcards -->
+        <div class="col-md-8">
+            <h3>Kartlar</h3>
+            <div class="row">
+                @foreach (var flashcard in Model.Flashcards)
+                {
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">@flashcard.Term</h5>
+                                <hr />
+                                <p class="card-text">@flashcard.Definition</p>
+                                @if (!string.IsNullOrEmpty(flashcard.ExampleSentence))
+                                {
+                                    <p class="card-text text-muted"><em>Örnek: @flashcard.ExampleSentence</em></p>
+                                }
+                                @if (!string.IsNullOrEmpty(flashcard.ImageUrl))
+                                {
+                                    <img src="@flashcard.ImageUrl" class="img-fluid mt-2" alt="@flashcard.Term" style="max-height: 150px;">
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @if (!Model.Flashcards.Any())
+            {
+                <div class="alert alert-info">
+                    Bu set henüz hiç kart içermiyor.
+                    @if (User.Identity.IsAuthenticated && int.TryParse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out int currentUserId) && currentUserId == Model.UserId)
+                    {
+                        <a asp-action="Edit" asp-route-id="@Model.Id">Hemen Ekle!</a>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>

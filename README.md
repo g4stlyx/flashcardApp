@@ -17,6 +17,9 @@ something like "flow"/feed in instagram/x or other social platforms
 * every set would have tags, when i create or fav sets, that kind of sets would appear to me more.
 
 ### TODO
+* All the text seen by users will be Turkish. English may be added as a choice.
+* Controller security should be checked again. some does not have friends check (for sets) or owner check.
+    * these should be checked using functions to be avoid repeating the same things.
 * 404, 403 etc. pages
 * Admin panel to manage tags and users
 * activity_logs to log user actions

@@ -1,0 +1,103 @@
+@model flashcardApp.Models.Authentication.RegisterRequest
+@{
+    ViewData["Title"] = "Kayıt Ol";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Kayıt Ol</h4>
+                </div>
+                <div class="card-body">
+                    <div id="registerResult" class="alert" style="display:none;"></div>
+                    <form id="registerForm" method="post">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Kullanıcı Adı</label>
+                            <input type="text" class="form-control" id="username" name="username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Parola</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                            <small class="form-text text-muted">Parola en az 8 karakter olmalı!</small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirmPassword" class="form-label">Parolayı onayla!</label>
+                            <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" required>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <button type="submit" class="btn btn-primary">Kayıt Ol</button>
+                            <a asp-controller="AuthView" asp-action="Login" class="btn btn-outline-secondary">Zaten bir hesabınız var mı?</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            $('#registerForm').submit(function(e) {
+                e.preventDefault();
+                
+                if ($('#password').val() !== $('#confirmPassword').val()) {
+                    $('#registerResult')
+                        .removeClass('alert-success')
+                        .addClass('alert-danger')
+                        .text('Passwords do not match')
+                        .show();
+                    return;
+                }
+                
+                var registerData = {
+                    username: $('#username').val(),
+                    email: $('#email').val(),
+                    password: $('#password').val(),
+                    confirmPassword: $('#confirmPassword').val()
+                };
+                
+                $.ajax({
+                    url: '/api/auth/register',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(registerData),
+                    success: function(response) {
+                        if (response.success) {
+                            $('#registerResult')
+                                .removeClass('alert-danger')
+                                .addClass('alert-success')
+                                .text('Registration successful! Redirecting to login page...')
+                                .show();
+                                
+                            // Redirect to login page after 2 seconds
+                            setTimeout(function() {
+                                window.location.href = '/authview/login';
+                            }, 2000);
+                        } else {
+                            $('#registerResult')
+                                .removeClass('alert-success')
+                                .addClass('alert-danger')
+                                .text(response.message)
+                                .show();
+                        }
+                    },
+                    error: function(xhr) {
+                        var response = xhr.responseJSON;
+                        $('#registerResult')
+                            .removeClass('alert-success')
+                            .addClass('alert-danger')
+                            .text(response ? response.message : 'An error occurred. Please try again.')
+                            .show();
+                    }
+                });
+            });
+        });
+    </script>
+}

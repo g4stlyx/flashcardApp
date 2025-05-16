@@ -1,5 +1,6 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,26 +9,41 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/flashcardApp.styles.css" asp-append-version="true" />
 </head>
+
 <body>
     <header>
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
             <div class="container-fluid">
                 <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">Flashcard App</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse"
+                    aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
-                </button>                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">                    <ul class="navbar-nav flex-grow-1">
+                </button>
+                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                    <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Users">Users</a>
+                            <a class="nav-link text-dark" asp-area="" asp-controller="FlashcardsView"
+                                asp-action="Index">Kartlar</a>
+                        </li>
+                        <li class="nav-item" id="mySetsItem" style="display: none;">
+                            <a class="nav-link text-dark" href="/FlashcardsView/MySets">Setlerim</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="TestDatabase">Test Database</a>
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Home"
+                                asp-action="AuthDebug">Auth Debug</a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="DatabaseInfo">DB Connection Info</a>
+                    </ul>                    
+                    <ul class="navbar-nav">
+                        <li class="nav-item" id="loginItem">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="AuthView"
+                                asp-action="Login">Login</a>
+                        </li>
+                        <li class="nav-item d-none" id="logoutItem">
+                            <a class="nav-link text-dark" href="#" id="logoutLink">Logout (<span
+                                    id="usernameDisplay"></span>)</a>
                         </li>
                     </ul>
                 </div>
@@ -42,12 +58,59 @@
 
     <footer class="border-top footer text-muted">
         <div class="container">
-            &copy; 2025 - flashcardApp - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+            &copy; 2025 - g4stLy
         </div>
     </footer>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <!-- Auth handling -->
+    <script src="~/js/jwt-handler.js" asp-append-version="true"></script>
+    <!-- Add debug auth information to console -->
+    <script>
+        console.log("Debug Auth Info: Token in localStorage:", localStorage.getItem('token') ? "Present (length: " + localStorage.getItem('token').length + ")" : "Not present");
+        console.log("Current page:", window.location.pathname);
+    </script>
+    <script>
+        $(document).ready(function () {
+            // Check if user is logged in
+            const token = localStorage.getItem('token');
+            const userInfo = window.getUserInfoFromToken();
+
+            if (token && userInfo) {
+                // User is logged in
+                $('#loginItem').addClass('d-none');
+                $('#logoutItem').removeClass('d-none');
+                $('#usernameDisplay').text(userInfo.username);
+                $('#mySetsItem').show();
+
+                // Add admin indicator if user is admin
+                if (userInfo.isAdmin) {
+                    $('#usernameDisplay').after(' <span class="badge bg-danger">Admin</span>');
+                }
+
+                // Add Authorization header to AJAX requests
+                $.ajaxSetup({
+                    beforeSend: function (xhr) {
+                        xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+                    }
+                });
+            } else {
+                // User is not logged in
+                $('#loginItem').removeClass('d-none');
+                $('#logoutItem').addClass('d-none');
+                $('#mySetsItem').hide();
+            }
+            // Handle logout
+            $('#logoutLink').click(function (e) {
+                e.preventDefault();
+                localStorage.removeItem('token');
+                window.location.href = '/AuthView/Login';
+            });
+        });
+    </script>
+
     @await RenderSectionAsync("Scripts", required: false)
 </body>
+
 </html>

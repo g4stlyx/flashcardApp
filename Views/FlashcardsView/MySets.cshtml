@@ -1,0 +1,59 @@
+@model List<flashcardApp.Models.FlashcardSet>
+@{
+    ViewData["Title"] = "Setlerim";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Setlerim</h1>
+        <a class="btn btn-primary" asp-action="Create">Yeni Bir Set Oluştur</a>
+    </div>
+
+    <div class="row">
+        @foreach (var set in Model)
+        {
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    @if (!string.IsNullOrEmpty(set.CoverImageUrl))
+                    {
+                        <img src="@set.CoverImageUrl" class="card-img-top" alt="@set.Title" style="height: 180px; object-fit: cover;">
+                    }
+                    else
+                    {
+                        <div class="card-img-top bg-secondary text-white d-flex align-items-center justify-content-center" style="height: 180px;">
+                            <i class="bi bi-card-heading" style="font-size: 3rem;"></i>
+                        </div>
+                    }
+                    <div class="card-body">
+                        <h5 class="card-title">@set.Title</h5>
+                        <p class="card-text">
+                            @(string.IsNullOrEmpty(set.Description) ? "No description" : 
+                              set.Description.Length > 100 ? set.Description.Substring(0, 97) + "..." : set.Description)
+                        </p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="badge @(set.Visibility == Visibility.Public ? "bg-success" : 
+                                               set.Visibility == Visibility.Friends ? "bg-info" : "bg-secondary")">
+                                @set.Visibility
+                            </span>
+                            <small class="text-muted">@set.Flashcards.Count kart</small>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-transparent border-top-0">
+                        <div class="d-flex justify-content-between">
+                            <a asp-action="Set" asp-route-id="@set.Id" class="btn btn-outline-primary">Görüntüle</a>
+                            <a asp-action="Edit" asp-route-id="@set.Id" class="btn btn-outline-secondary">Düzenle</a>
+                            <a asp-action="Study" asp-route-id="@set.Id" class="btn btn-success">Çalış</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-info">
+            Henüz bir set oluşturmadınız. <a asp-action="Create">İlk setini oluştur!</a>
+        </div>
+    }
+</div>

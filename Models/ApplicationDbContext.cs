@@ -76,6 +76,14 @@ namespace flashcardApp.Models
                 .WithMany(s => s.FavouritedBy)
                 .HasForeignKey(fs => fs.SetId)
                 .OnDelete(DeleteBehavior.Cascade);
+                
+            // Configure column names for FavouriteSet
+            modelBuilder.Entity<FavouriteSet>()
+                .Property(fs => fs.UserId).HasColumnName("user_id");
+            modelBuilder.Entity<FavouriteSet>()
+                .Property(fs => fs.SetId).HasColumnName("set_id");
+            modelBuilder.Entity<FavouriteSet>()
+                .Property(fs => fs.CreatedAt).HasColumnName("created_at");
 
             modelBuilder.Entity<Friend>()
                 .HasOne(f => f.User1)
@@ -99,12 +107,89 @@ namespace flashcardApp.Models
                 .HasOne(fr => fr.Receiver)
                 .WithMany(u => u.ReceivedFriendRequests)
                 .HasForeignKey(fr => fr.ReceiverId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            // Configure property mappings (to match SQL column names)
+                .OnDelete(DeleteBehavior.Cascade);            // Configure property mappings (to match SQL column names)
             modelBuilder.Entity<Tag>()
                 .Property(t => t.TagName)
                 .HasColumnName("tag");
+                
+            // Column name mappings for FlashcardSet
+            modelBuilder.Entity<FlashcardSet>()
+                .Property(fs => fs.UserId).HasColumnName("user_id");
+            modelBuilder.Entity<FlashcardSet>()
+                .Property(fs => fs.Title).HasColumnName("title");            modelBuilder.Entity<FlashcardSet>()
+                .Property(fs => fs.Description).HasColumnName("description");
+            modelBuilder.Entity<FlashcardSet>()
+                .Property(fs => fs.CoverImageUrl).HasColumnName("cover_image_url");
+            modelBuilder.Entity<FlashcardSet>()
+                .Property(fs => fs.CreatedAt).HasColumnName("created_at");
+            modelBuilder.Entity<FlashcardSet>()
+                .Property(fs => fs.UpdatedAt).HasColumnName("updated_at");
+                  // Column name mappings for Flashcard
+            modelBuilder.Entity<Flashcard>()
+                .Property(f => f.SetId).HasColumnName("set_id");
+            modelBuilder.Entity<Flashcard>()
+                .Property(f => f.Term).HasColumnName("term");
+            modelBuilder.Entity<Flashcard>()
+                .Property(f => f.Definition).HasColumnName("definition");
+            modelBuilder.Entity<Flashcard>()
+                .Property(f => f.ImageUrl).HasColumnName("image_url");
+            modelBuilder.Entity<Flashcard>()
+                .Property(f => f.ExampleSentence).HasColumnName("example_sentence");
+            modelBuilder.Entity<Flashcard>()
+                .Property(f => f.CreatedAt).HasColumnName("created_at");
+            modelBuilder.Entity<Flashcard>()
+                .Property(f => f.UpdatedAt).HasColumnName("updated_at");
+                
+            // Add explicit relationship mapping for Flashcard to FlashcardSet
+            modelBuilder.Entity<Flashcard>()
+                .HasOne(f => f.FlashcardSet)
+                .WithMany(fs => fs.Flashcards)
+                .HasForeignKey(f => f.SetId)
+                .OnDelete(DeleteBehavior.Cascade);
+                
+            // Column name mappings for SetView
+            modelBuilder.Entity<SetView>()
+                .Property(sv => sv.UserId).HasColumnName("user_id");
+            modelBuilder.Entity<SetView>()
+                .Property(sv => sv.SetId).HasColumnName("set_id");
+            modelBuilder.Entity<SetView>()
+                .Property(sv => sv.ViewerIpHash).HasColumnName("viewer_ip_hash");
+            modelBuilder.Entity<SetView>()
+                .Property(sv => sv.ViewedAt).HasColumnName("viewed_at");            // Configure the Visibility enum to string conversion for MySQL ENUM
+            modelBuilder.Entity<FlashcardSet>()
+                .Property(fs => fs.Visibility)
+                .HasConversion(
+                    // Convert enum to specific string values expected by the database
+                    v => v.ToString().ToLower(),  // enum to string
+                    v => (Visibility)Enum.Parse(typeof(Visibility), v, true) // string to enum
+                )
+                .HasColumnName("visibility");            // Configure string conversions for other enums used in entities
+            modelBuilder.Entity<FriendRequest>()
+                .Property(fr => fr.Status)
+                .HasConversion(
+                    // Convert enum to specific string values expected by the database
+                    s => s.ToString().ToLower(),  // enum to string
+                    s => (FriendRequestStatus)Enum.Parse(typeof(FriendRequestStatus), s, true) // string to enum
+                )
+                .HasColumnName("status");
+
+            // Add explicit relationship mapping for Tag to FlashcardSet
+            modelBuilder.Entity<Tag>()
+                .HasOne(t => t.FlashcardSet)
+                .WithMany(fs => fs.Tags)
+                .HasForeignKey(t => t.SetId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure property mappings for Tag
+            modelBuilder.Entity<Tag>()
+                .Property(t => t.SetId).HasColumnName("set_id");
+                
+            // Add explicit relationship mapping for SetView to FlashcardSet
+            modelBuilder.Entity<SetView>()
+                .HasOne(sv => sv.FlashcardSet)
+                .WithMany(fs => fs.Views)
+                .HasForeignKey(sv => sv.SetId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

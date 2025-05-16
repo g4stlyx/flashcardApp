@@ -1,0 +1,66 @@
+@model List<flashcardApp.Models.FlashcardSet>
+@{
+    ViewData["Title"] = "Flashcard Setleri";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Herkese Açık Setler</h1>
+        @if (User.Identity.IsAuthenticated)
+        {
+            <a class="btn btn-primary" asp-action="Create">Yeni Set Oluştur</a>
+        }
+    </div>
+
+    <div class="row">
+        @foreach (var set in Model)
+        {
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    @if (!string.IsNullOrEmpty(set.CoverImageUrl))
+                    {
+                        <img src="@set.CoverImageUrl" class="card-img-top" alt="@set.Title" style="height: 180px; object-fit: cover;">
+                    }
+                    else
+                    {
+                        <div class="card-img-top bg-secondary text-white d-flex align-items-center justify-content-center" style="height: 180px;">
+                            <i class="bi bi-card-heading" style="font-size: 3rem;"></i>
+                        </div>
+                    }
+                    <div class="card-body">
+                        <h5 class="card-title">@set.Title</h5>
+                        <p class="card-text">
+                            @(string.IsNullOrEmpty(set.Description) ? "No description" : 
+                              set.Description.Length > 100 ? set.Description.Substring(0, 97) + "..." : set.Description)
+                        </p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">By: @set.User.Username</small>
+                            <small class="text-muted">@set.Flashcards.Count cards</small>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-transparent border-top-0">
+                        <div class="d-flex justify-content-between">
+                            <a asp-action="Set" asp-route-id="@set.Id" class="btn btn-outline-primary">Görüntüle</a>
+                            <a asp-action="Study" asp-route-id="@set.Id" class="btn btn-success">Çalış</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-info">
+            Henüz hiç set oluşturulmadı.
+            @if (User.Identity.IsAuthenticated)
+            {
+                <a asp-action="Create">Hemen bir tane oluştur!</a>
+            }
+            else
+            {
+                <div>Set oluşturmak için <a asp-controller="AuthView" asp-action="Login">giriş yap</a>!</div>
+            }
+        </div>
+    }
+</div>

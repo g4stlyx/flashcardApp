@@ -1,0 +1,377 @@
+@model flashcardApp.Models.FlashcardSet
+@{
+    ViewData["Title"] = "Edit: " + Model.Title;
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <!-- Set Details -->
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Set Düzenle</h4>
+                </div>
+                <div class="card-body">
+                    <form id="updateSetForm">
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Başlık</label>
+                            <input type="text" class="form-control" id="title" value="@Model.Title" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Açıklama</label>
+                            <textarea class="form-control" id="description" rows="3">@Model.Description</textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="visibility" class="form-label">Görünürlük</label>                            
+                            <select class="form-select" id="visibility">
+                                @if (Model.Visibility == Visibility.Public)
+                                {
+                                    <option value="0" selected>Herkese Açık</option>
+                                }
+                                else
+                                {
+                                    <option value="0">Herkese Açık</option>
+                                }
+                                
+                                @if (Model.Visibility == Visibility.Friends)
+                                {
+                                    <option value="1" selected>Sadece arkadaşlarım</option>
+                                }
+                                else
+                                {
+                                    <option value="1">Sadece arkadaşlarım</option>
+                                }
+                                
+                                @if (Model.Visibility == Visibility.Private)
+                                {
+                                    <option value="2" selected>Özel (Sadece ben)</option>
+                                }
+                                else
+                                {
+                                    <option value="2">Özel (Sadece ben)</option>
+                                }
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="coverImageUrl" class="form-label">Kapak Fotoğrafı URL</label>
+                            <input type="url" class="form-control" id="coverImageUrl" value="@Model.CoverImageUrl">
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">Seti Güncelle</button>
+                            @* !TODO: silmeden, güncellemeden emin misiniz diye sor *@
+                            <button type="button" id="deleteSetBtn" class="btn btn-danger">Seti Sil</button>
+                            <a asp-action="Set" asp-route-id="@Model.Id" class="btn btn-outline-secondary">İptal Et</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Flashcards -->
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Kartlar</h4>
+                    <button type="button" class="btn btn-light" data-bs-toggle="modal" data-bs-target="#addFlashcardModal">
+                        Kart Ekle
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="flashcardsList">
+                        @if (!Model.Flashcards.Any())
+                        {
+                            <div class="alert alert-info">
+                                Bu set herhangi bir kart içermiyor. "Kart Ekle" butonuyla yeni kartlar ekleyebilirsiniz.
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Terim (Ön Yüz)</th>
+                                            <th>Açıklama</th>
+                                            <th>Eylemler</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var flashcard in Model.Flashcards)
+                                        {
+                                            <tr data-id="@flashcard.Id">
+                                                <td>@flashcard.Term</td>
+                                                <td>@(flashcard.Definition.Length > 50 ? flashcard.Definition.Substring(0, 47) + "..." : flashcard.Definition)</td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-outline-secondary edit-flashcard-btn" 
+                                                            data-id="@flashcard.Id"
+                                                            data-term="@flashcard.Term"
+                                                            data-definition="@flashcard.Definition"
+                                                            data-image-url="@flashcard.ImageUrl"
+                                                            data-example="@flashcard.ExampleSentence">
+                                                        Düzenle
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-danger delete-flashcard-btn" data-id="@flashcard.Id">
+                                                        Sil
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Flashcard Modal -->
+<div class="modal fade" id="addFlashcardModal" tabindex="-1" aria-labelledby="addFlashcardModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addFlashcardModalLabel">Yeni Kart Ekle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="flashcardForm">
+                    <input type="hidden" id="flashcardId" value="0">
+                    
+                    <div class="mb-3">
+                        <label for="term" class="form-label">Terim (Ön Yüz)</label>
+                        <input type="text" class="form-control" id="term" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="definition" class="form-label">Açıklama</label>
+                        <textarea class="form-control" id="definition" rows="3" required></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="exampleSentence" class="form-label">Örnek Cümle (İsteğe Bağlı)</label>
+                        <textarea class="form-control" id="exampleSentence" rows="2"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="imageUrl" class="form-label">Fotoğraf URL (İsteğe Bağlı)</label>
+                        <input type="url" class="form-control" id="imageUrl">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal Et</button>
+                <button type="button" class="btn btn-primary" id="saveFlashcardBtn">Kaydet</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Silmeyi Onayla</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="deleteConfirmMessage">Silmek istediğinize emin misiniz? Bu işlem geri alınamaz.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal Et</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Sil</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            const setId = @Model.Id;
+            let itemToDelete = null;
+            let isEditMode = false;
+            
+            // Update Set Details
+            $('#updateSetForm').submit(function(e) {
+                e.preventDefault();
+                
+                const setData = {
+                    title: $('#title').val(),
+                    description: $('#description').val(),
+                    visibility: parseInt($('#visibility').val()),
+                    coverImageUrl: $('#coverImageUrl').val() || null
+                };
+                
+                $.ajax({
+                    url: `/api/flashcard-sets/${setId}`,
+                    type: 'PUT',
+                    contentType: 'application/json',
+                    data: JSON.stringify(setData),
+                    success: function() {
+                        alert('Set updated successfully!');
+                    },
+                    error: function(xhr) {
+                        alert('Error updating set: ' + (xhr.responseJSON?.message || 'Unknown error'));
+                    }
+                });
+            });
+            
+            // Delete Set
+            $('#deleteSetBtn').click(function() {
+                $('#deleteConfirmMessage').text('Are you sure you want to delete this flashcard set? All flashcards will be permanently deleted.');
+                itemToDelete = { type: 'set', id: setId };
+                $('#deleteConfirmModal').modal('show');
+            });
+            
+            // Handle Flashcard Form
+            $('#addFlashcardModal').on('show.bs.modal', function (e) {
+                // Reset form if not triggered by edit button
+                if (!isEditMode) {
+                    $('#flashcardForm')[0].reset();
+                    $('#flashcardId').val(0);
+                    $('#addFlashcardModalLabel').text('Add New Flashcard');
+                }
+                isEditMode = false;
+            });
+            
+            // Save Flashcard (Create or Update)
+            $('#saveFlashcardBtn').click(function() {
+                const flashcardId = $('#flashcardId').val();
+                const flashcardData = {
+                    setId: setId,
+                    term: $('#term').val(),
+                    definition: $('#definition').val(),
+                    exampleSentence: $('#exampleSentence').val() || null,
+                    imageUrl: $('#imageUrl').val() || null
+                };
+                
+                if (flashcardId == 0) {
+                    // Create new flashcard
+                    $.ajax({
+                        url: '/api/flashcards',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify(flashcardData),
+                        success: function() {
+                            $('#addFlashcardModal').modal('hide');
+                            location.reload(); // Reload to show the new flashcard
+                        },
+                        error: function(xhr) {
+                            alert('Error creating flashcard: ' + (xhr.responseJSON?.message || 'Unknown error'));
+                        }
+                    });
+                } else {
+                    // Update existing flashcard
+                    $.ajax({
+                        url: `/api/flashcards/${flashcardId}`,
+                        type: 'PUT',
+                        contentType: 'application/json',
+                        data: JSON.stringify(flashcardData),
+                        success: function() {
+                            $('#addFlashcardModal').modal('hide');
+                            location.reload(); // Reload to show changes
+                        },
+                        error: function(xhr) {
+                            alert('Error updating flashcard: ' + (xhr.responseJSON?.message || 'Unknown error'));
+                        }
+                    });
+                }
+            });
+            
+            // Edit Flashcard
+            $('.edit-flashcard-btn').click(function() {
+                const id = $(this).data('id');
+                const term = $(this).data('term');
+                const definition = $(this).data('definition');
+                const imageUrl = $(this).data('image-url');
+                const example = $(this).data('example');
+                
+                // Set form values
+                $('#flashcardId').val(id);
+                $('#term').val(term);
+                $('#definition').val(definition);
+                $('#imageUrl').val(imageUrl);
+                $('#exampleSentence').val(example);
+                
+                // Update modal title
+                $('#addFlashcardModalLabel').text('Edit Flashcard');
+                
+                // Set edit mode and show modal
+                isEditMode = true;
+                $('#addFlashcardModal').modal('show');
+            });
+            
+            // Delete Flashcard
+            $('.delete-flashcard-btn').click(function() {
+                const id = $(this).data('id');
+                $('#deleteConfirmMessage').text('Are you sure you want to delete this flashcard?');
+                itemToDelete = { type: 'flashcard', id: id };
+                $('#deleteConfirmModal').modal('show');
+            });
+            
+            // Confirm Delete (Set or Flashcard)
+            $('#confirmDeleteBtn').click(function() {
+                if (!itemToDelete) return;
+                
+                if (itemToDelete.type === 'set') {
+                    // Delete set
+                    $.ajax({
+                        url: `/api/flashcard-sets/${itemToDelete.id}`,
+                        type: 'DELETE',
+                        success: function() {
+                            window.location.href = '/FlashcardsView/MySets'; // Redirect to my sets
+                        },
+                        error: function(xhr) {
+                            alert('Error deleting set: ' + (xhr.responseJSON?.message || 'Unknown error'));
+                            $('#deleteConfirmModal').modal('hide');
+                        }
+                    });
+                } else if (itemToDelete.type === 'flashcard') {
+                    // Delete flashcard
+                    $.ajax({
+                        url: `/api/flashcards/${itemToDelete.id}`,
+                        type: 'DELETE',
+                        success: function() {
+                            $(`tr[data-id="${itemToDelete.id}"]`).remove();
+                            $('#deleteConfirmModal').modal('hide');
+                            
+                            // Reload if all flashcards are deleted
+                            if ($('#flashcardsList tbody tr').length === 0) {
+                                location.reload();
+                            }
+                        },
+                        error: function(xhr) {
+                            alert('Error deleting flashcard: ' + (xhr.responseJSON?.message || 'Unknown error'));
+                            $('#deleteConfirmModal').modal('hide');
+                        }
+                    });
+                }
+        });
+            
+            // Auto-add token to all AJAX requests for this page
+            const token = localStorage.getItem("token");
+            if (token) {
+                console.log("Setting up token for all AJAX requests on Edit page");
+                // Add the token to the header of all AJAX requests
+                $.ajaxSetup({
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader("Authorization", "Bearer " + token);
+                    }
+                });
+                
+                // Add hidden input with token to updateSetForm
+                if (!$("#updateSetForm input[name='jwt']").length) {
+                    $("#updateSetForm").append(`<input type="hidden" name="jwt" value="${token}">`);
+                }
+            }
+        });
+    </script>
+    <script src="~/js/edit-page-handler.js"></script>
+}

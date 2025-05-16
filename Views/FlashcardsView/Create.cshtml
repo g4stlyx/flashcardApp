@@ -1,0 +1,154 @@
+@{
+    ViewData["Title"] = "Set oluştur";
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Set oluştur</h4>
+                </div>
+                <div class="card-body">
+                    <form id="createSetForm">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="title" class="form-label">Başlık</label>
+                                    <input type="text" class="form-control" id="title" name="title" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="description" class="form-label">Açıklama</label>
+                                    <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="visibility" class="form-label">Görünürlük</label>
+                                    <select class="form-select" id="visibility" name="visibility">
+                                        <option value="0">Herkese Açık</option>
+                                        <option value="1">Sadece arkadaşlarım</option>
+                                        <option value="2">Özel (Sadece ben)</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="coverImageUrl" class="form-label">Kapak Fotoğrafı URL (İsteğe Bağlı)</label>
+                                    <input type="url" class="form-control" id="coverImageUrl" name="coverImageUrl">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="button" id="testAuthBtn" class="btn btn-secondary me-2">Test Auth</button>
+                            <button type="submit" class="btn btn-primary">Set Oluştur</button>
+                            <a asp-action="Index" class="btn btn-outline-secondary">İptal Et</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            $('#createSetForm').submit(function(e) {
+                e.preventDefault();
+                // Get form data
+                // Get visibility value as number (0, 1, 2)
+                const visibilityValue = parseInt($('#visibility').val());
+                
+                // Create map of visibility values to string names as they appear in the database
+                const visibilityMap = {
+                    0: "public",    // Public
+                    1: "friends",   // Friends
+                    2: "private"    // Private
+                };
+                
+                var setData = {
+                    title: $('#title').val(),
+                    description: $('#description').val(),
+                    visibility: visibilityValue, // Keep as integer (0, 1, 2), the server will convert it
+                    coverImageUrl: $('#coverImageUrl').val() || null
+                };
+            
+                console.log('Selected visibility value:', visibilityValue);
+                console.log('Maps to:', visibilityMap[visibilityValue]);
+                console.log('Data being sent:', setData);
+                // Get the JWT token from localStorage
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    alert('Kullanıcı doğrulaması için oturum açmanız gerekiyor.');
+                    return;
+                }
+                
+                // Log the data we're sending
+                console.log('Sending data:', setData);
+                
+                // Submit via API
+                $.ajax({
+                    url: '/api/flashcard-sets',
+                    type: 'POST',
+                    contentType: 'application/json; charset=utf-8',
+                    dataType: 'json',
+                    data: JSON.stringify(setData),
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    },
+                    success: function(response) {
+                        // Redirect to edit page to add flashcards
+                        window.location.href = '/FlashcardsView/Edit/' + response.id;
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error status:', status);
+                        console.error('Error details:', xhr.responseText);
+                        console.error('Status code:', xhr.status);
+                        console.error('Status text:', xhr.statusText);
+                        
+                        // Try to parse response JSON if available
+                        try {
+                            const responseData = JSON.parse(xhr.responseText);
+                            console.error('Parsed response:', responseData);
+                            alert('Set oluştururken hata: ' + (responseData.message || responseData.title || 'API Error'));
+                        } catch (e) {
+                            alert('Set oluştururken hata: Bilinmeyen hata. HTTP Status: ' + xhr.status);
+                        }
+                    }
+                });
+            });
+              $('#testAuthBtn').click(function() {
+                // Test authentication button clicked
+                const token = localStorage.getItem('token');
+                
+                if (!token) {
+                    alert('Kullanıcı doğrulaması için oturum açmanız gerekiyor.');
+                    return;
+                }
+                
+                // Make a test API call to check authentication
+                $.ajax({
+                    url: '/api/flashcard-sets/test-auth',
+                    type: 'GET',
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    },
+                    success: function(response) {
+                        console.log('Auth test response:', response);
+                        alert('Kullanıcı doğrulaması başarılı! User ID: ' + response.userId);
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Auth test error:', error);
+                        console.error('Error details:', xhr.responseText);
+                        try {
+                            const responseData = JSON.parse(xhr.responseText);
+                            console.log('Error response:', responseData);
+                        } catch (e) {}
+                        alert('Kullanıcı doğrulaması başarısız. Lütfen oturum açın veya token\'ı kontrol edin.');
+                    }
+                });
+            });
+        });
+    </script>
+}

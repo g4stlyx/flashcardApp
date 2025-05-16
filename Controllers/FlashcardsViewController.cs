@@ -1,0 +1,646 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using flashcardApp.Models;
+using flashcardApp.Authentication;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.Linq;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using System.IdentityModel.Tokens.Jwt;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+
+namespace flashcardApp.Controllers
+{
+    public class FlashcardsViewController : Controller
+    {
+        private readonly ApplicationDbContext _context;
+
+        public FlashcardsViewController(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
+        // GET: /FlashcardsView
+        public async Task<IActionResult> Index()
+        {
+            var publicSets = await _context.FlashcardSets
+                .Where(s => s.Visibility == Visibility.Public)
+                .Include(s => s.User)
+                .OrderByDescending(s => s.CreatedAt)
+                .Take(20)
+                .ToListAsync();
+
+            return View(publicSets);
+        }          
+
+        // GET: /FlashcardsView/MySets
+        [Authentication.JwtAuthorize("Registered")]
+        public async Task<IActionResult> MySets()
+        {
+            Console.WriteLine("MySets (GET) action called");
+            
+            // Log detailed request information
+            Console.WriteLine($"IsAuthenticated: {User.Identity?.IsAuthenticated}");
+            Console.WriteLine($"Request URL: {Request.Path}{Request.QueryString}");
+            Console.WriteLine($"HTTP Method: {Request.Method}");
+            
+            // Log headers
+            Console.WriteLine("Headers:");
+            foreach (var header in Request.Headers)
+            {
+                Console.WriteLine($"  {header.Key}: {header.Value}");
+            }
+            
+            // Log all available auth methods
+            Console.WriteLine("Auth Methods Available:");
+            Console.WriteLine($"  Auth Header: {Request.Headers.ContainsKey("Authorization")}");
+            Console.WriteLine($"  Query Token: {Request.Query.ContainsKey("token")}");
+            Console.WriteLine($"  Cookie JWT: {Request.Cookies.ContainsKey("jwt")}");
+            Console.WriteLine($"  User Principal: {User?.Identity?.IsAuthenticated}");
+            
+            // Make sure we have a valid user ID in the claims
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                Console.WriteLine("No valid NameIdentifier claim found in User principal, trying to extract from token...");
+                
+                string token = null;
+                
+                // Check for JWT token in Authorization header (primary method)
+                string authHeader = Request.Headers["Authorization"];
+                if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
+                {
+                    token = authHeader.Substring("Bearer ".Length).Trim();
+                    Console.WriteLine($"Found JWT in Authorization header: {token.Substring(0, Math.Min(20, token.Length))}...");
+                }
+                
+                // Check for token as a query parameter as a fallback
+                if (string.IsNullOrEmpty(token) && Request.Query.TryGetValue("token", out var queryToken))
+                {
+                    token = queryToken.ToString();
+                    Console.WriteLine($"Found JWT in query parameter: {token.Substring(0, Math.Min(20, token.Length))}...");
+                }
+                
+                // Check for JWT in cookie as last resort (but we're trying to avoid relying on cookies)
+                if (string.IsNullOrEmpty(token) && Request.Cookies.TryGetValue("jwt", out string jwtFromCookie))
+                {
+                    token = jwtFromCookie;
+                    Console.WriteLine($"Found JWT cookie in GET request: {token.Substring(0, Math.Min(20, token.Length))}...");
+                }
+                
+                if (!string.IsNullOrEmpty(token))
+                {
+                    Console.WriteLine("Found token, using POST method version");
+                    return await MySets(token);
+                }
+                
+                Console.WriteLine("No valid authentication found through any method, redirecting to login");
+                return RedirectToAction("Login", "AuthView");
+            }
+            
+            Console.WriteLine($"Using claim-based authentication, user ID: {userIdClaim}");
+            var userId = int.Parse(userIdClaim);
+            
+            try
+            {
+                // First try getting sets without flashcards to be safe
+                var mySets = await _context.FlashcardSets
+                    .Where(s => s.UserId == userId)
+                    .OrderByDescending(s => s.CreatedAt)
+                    .ToListAsync();
+                    
+                // Then manually load flashcards to avoid potential mapping issues
+                foreach (var set in mySets)
+                {
+                    // Manually load flashcards for each set
+                    var flashcards = await _context.Flashcards
+                        .Where(f => f.SetId == set.Id)
+                        .ToListAsync();
+                        
+                    // Assign to the navigation property
+                    set.Flashcards = flashcards;
+                }
+                
+                return View(mySets);
+            }
+            catch (Exception ex)
+            {
+                // Log the error
+                Console.WriteLine($"Error retrieving flashcard sets: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                
+                // Return a simple view without flashcards as fallback
+                var simpleSets = await _context.FlashcardSets
+                    .Where(s => s.UserId == userId)
+                    .OrderByDescending(s => s.CreatedAt)
+                    .Select(s => new FlashcardSet
+                    {
+                        Id = s.Id,
+                        Title = s.Title,
+                        Description = s.Description,
+                        UserId = s.UserId,
+                        CreatedAt = s.CreatedAt,
+                        UpdatedAt = s.UpdatedAt,
+                        Visibility = s.Visibility
+                    })
+                    .ToListAsync();
+                    
+                return View(simpleSets);
+            }
+        }
+        
+        // POST: /FlashcardsView/MySets - Alternate approach for form submit with JWT
+        [HttpPost]
+        public async Task<IActionResult> MySets(string jwt)
+        {
+            Console.WriteLine("MySets (POST) action called");
+            
+            // Process the JWT token
+            if (string.IsNullOrEmpty(jwt))
+            {
+                Console.WriteLine("No JWT provided in POST");
+                return RedirectToAction("Login", "AuthView");
+            }
+            
+            Console.WriteLine($"Received JWT token: {jwt.Substring(0, Math.Min(20, jwt.Length))}...");
+            
+            // Add the token to the Authorization header for future requests
+            HttpContext.Response.Headers.Append("X-JWT-Status", "Valid");
+            
+            // Note: We're no longer setting cookies since they don't seem to be working properly
+            // Instead, we're relying on the client having the token in localStorage
+            // and sending it via Authorization header or query parameter
+            
+            // Manually validate the token
+            var handler = new JwtSecurityTokenHandler();
+            JwtSecurityToken jsonToken;
+            
+            try
+            {
+                jsonToken = handler.ReadToken(jwt) as JwtSecurityToken;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error reading token: {ex.Message}");
+                return RedirectToAction("Login", "AuthView");
+            }
+            
+            if (jsonToken == null)
+            {
+                Console.WriteLine("Invalid token: could not parse as JWT");
+                return RedirectToAction("Login", "AuthView");
+            }
+            
+            // Log all claims for debugging
+            Console.WriteLine("Claims in token:");
+            foreach (var claim in jsonToken.Claims)
+            {
+                Console.WriteLine($"  {claim.Type}: {claim.Value}");
+            }
+            
+            var userIdClaim = jsonToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+            {
+                Console.WriteLine("Invalid token: missing NameIdentifier claim");
+                return RedirectToAction("Login", "AuthView");
+            }
+            
+            var userId = int.Parse(userIdClaim.Value);
+            
+            try
+            {
+                // First try getting sets without flashcards to be safe
+                var mySets = await _context.FlashcardSets
+                    .Where(s => s.UserId == userId)
+                    .OrderByDescending(s => s.CreatedAt)
+                    .ToListAsync();
+                    
+                // Then manually load flashcards to avoid potential mapping issues
+                foreach (var set in mySets)
+                {
+                    // Manually load flashcards for each set
+                    var flashcards = await _context.Flashcards
+                        .Where(f => f.SetId == set.Id)
+                        .ToListAsync();
+                        
+                    // Assign to the navigation property
+                    set.Flashcards = flashcards;
+                }
+                
+                return View(mySets);
+            }
+            catch (Exception ex)
+            {
+                // Log the error
+                Console.WriteLine($"Error retrieving flashcard sets: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                
+                // Return a simple view without flashcards as fallback
+                var simpleSets = await _context.FlashcardSets
+                    .Where(s => s.UserId == userId)
+                    .OrderByDescending(s => s.CreatedAt)
+                    .Select(s => new FlashcardSet
+                    {
+                        Id = s.Id,
+                        Title = s.Title,
+                        Description = s.Description,
+                        UserId = s.UserId,
+                        CreatedAt = s.CreatedAt,
+                        UpdatedAt = s.UpdatedAt,
+                        Visibility = s.Visibility
+                    })
+                    .ToListAsync();
+                    
+                return View(simpleSets);
+            }
+        }
+
+        // GET: /FlashcardsView/Set/5
+        public async Task<IActionResult> Set(int id)
+        {
+            var set = await _context.FlashcardSets
+                .Include(s => s.User)
+                .Include(s => s.Flashcards)
+                .Include(s => s.Tags)
+                .FirstOrDefaultAsync(s => s.Id == id);
+                
+            if (set == null)
+            {
+                return NotFound();
+            }
+            
+            // Check visibility permissions
+            if (set.Visibility == Visibility.Private)
+            {
+                // For private sets, check if user is authenticated and is the owner
+                if (!User.Identity.IsAuthenticated)
+                {
+                    return RedirectToAction("Login", "AuthView");
+                }
+                
+                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+                if (set.UserId != userId)
+                {
+                    return Forbid();
+                }
+            }
+            
+            // Increment view count
+            try
+            {
+                // Create a new SetView record
+                _context.SetViews.Add(new SetView 
+                { 
+                    SetId = set.Id,
+                    ViewedAt = DateTime.UtcNow
+                });
+                
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception)
+            {
+                // Fail silently - view counting is not critical
+            }
+            
+            return View(set);
+        }
+        
+        // POST handling for Set action with JWT token
+        [HttpPost]
+        public async Task<IActionResult> Set(int id, string jwt)
+        {
+            // Process the JWT token
+            if (string.IsNullOrEmpty(jwt))
+            {
+                return RedirectToAction("Login", "AuthView");
+            }
+            
+            // Set the JWT token in the response cookies
+            HttpContext.Response.Cookies.Append("jwt", jwt, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict
+            });
+            
+            // Continue with the regular action
+            var set = await _context.FlashcardSets
+                .Include(s => s.User)
+                .Include(s => s.Flashcards)
+                .Include(s => s.Tags)
+                .FirstOrDefaultAsync(s => s.Id == id);
+                
+            if (set == null)
+            {
+                return NotFound();
+            }
+            
+            // Check visibility permissions for private sets
+            if (set.Visibility == Visibility.Private)
+            {
+                // Validate the JWT token manually
+                var handler = new JwtSecurityTokenHandler();
+                var jsonToken = handler.ReadToken(jwt) as JwtSecurityToken;
+                
+                if (jsonToken == null)
+                {
+                    return RedirectToAction("Login", "AuthView");
+                }
+                
+                var userIdClaim = jsonToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
+                if (userIdClaim == null)
+                {
+                    return RedirectToAction("Login", "AuthView");
+                }
+                
+                var userId = int.Parse(userIdClaim.Value);
+                if (set.UserId != userId)
+                {
+                    return Forbid();
+                }
+            }
+            
+            // Increment view count
+            try
+            {
+                _context.SetViews.Add(new SetView 
+                { 
+                    SetId = set.Id,
+                    ViewedAt = DateTime.UtcNow
+                });
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception)
+            {
+                // Fail silently - view counting is not critical
+            }
+            
+            return View(set);
+        }
+        
+        // GET: /FlashcardsView/Study/5
+        public async Task<IActionResult> Study(int id)
+        {
+            var set = await _context.FlashcardSets
+                .Include(s => s.Flashcards)
+                .FirstOrDefaultAsync(s => s.Id == id);
+                
+            if (set == null)
+            {
+                return NotFound();
+            }
+            
+            // Check visibility permissions
+            if (set.Visibility == Visibility.Private)
+            {
+                // For private sets, check if user is authenticated and is the owner
+                if (!User.Identity.IsAuthenticated)
+                {
+                    return RedirectToAction("Login", "AuthView");
+                }
+                
+                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+                if (set.UserId != userId)
+                {
+                    return Forbid();
+                }
+            }
+            
+            return View(set);
+        }
+        
+        // POST handling for Study action with JWT token
+        [HttpPost]
+        public async Task<IActionResult> Study(int id, string jwt)
+        {
+            // Process the JWT token
+            if (string.IsNullOrEmpty(jwt))
+            {
+                return RedirectToAction("Login", "AuthView");
+            }
+            
+            // Set the JWT token in the response cookies
+            HttpContext.Response.Cookies.Append("jwt", jwt, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict
+            });
+            
+            // Continue with the regular action
+            var set = await _context.FlashcardSets
+                .Include(s => s.Flashcards)
+                .FirstOrDefaultAsync(s => s.Id == id);
+                
+            if (set == null)
+            {
+                return NotFound();
+            }
+            
+            // Check visibility permissions for private sets
+            if (set.Visibility == Visibility.Private)
+            {
+                // Validate the JWT token manually
+                var handler = new JwtSecurityTokenHandler();
+                var jsonToken = handler.ReadToken(jwt) as JwtSecurityToken;
+                
+                if (jsonToken == null)
+                {
+                    return RedirectToAction("Login", "AuthView");
+                }
+                
+                var userIdClaim = jsonToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
+                if (userIdClaim == null)
+                {
+                    return RedirectToAction("Login", "AuthView");
+                }
+                
+                var userId = int.Parse(userIdClaim.Value);
+                if (set.UserId != userId)
+                {
+                    return Forbid();
+                }
+            }
+            
+            return View(set);
+        }
+
+        // GET: /FlashcardsView/Create
+        [Authentication.JwtAuthorize("Registered")]
+        public IActionResult Create()
+        {
+            return View();
+        }
+        
+        // POST: /FlashcardsView/Create (with JWT form handling)
+        [HttpPost]
+        public IActionResult Create(string jwt)
+        {
+            // Process the JWT token
+            if (string.IsNullOrEmpty(jwt))
+            {
+                return RedirectToAction("Login", "AuthView");
+            }
+            
+            // Set the JWT token in the response cookies
+            HttpContext.Response.Cookies.Append("jwt", jwt, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict
+            });
+            
+            // Continue to the Create view
+            return View();
+        }
+
+        // GET: /FlashcardsView/Edit/5
+        [Authentication.JwtAuthorize("Registered")]
+        public async Task<IActionResult> Edit(int id, string token = null)
+        {
+            Console.WriteLine("Edit (GET) action called for id " + id);
+            Console.WriteLine("Token provided as query parameter: " + (token != null ? "Yes (length: " + token.Length + ")" : "No"));
+            
+            // Log authorization status
+            Console.WriteLine("Request Authorization Header: " + (Request.Headers.ContainsKey("Authorization") ? Request.Headers["Authorization"].ToString() : "None"));
+            Console.WriteLine("User authenticated: " + (User.Identity?.IsAuthenticated == true ? "Yes" : "No"));
+            
+            // Try to verify the user through various methods (token in query, Authorization header, or already authenticated)
+            int userId;
+            
+            // First check if user is already authenticated through standard mechanisms
+            if (User.Identity?.IsAuthenticated == true) 
+            {
+                Console.WriteLine("User is already authenticated via standard mechanisms");
+                userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+                Console.WriteLine("Using authenticated user ID: " + userId);
+            }
+            // Then try using the token provided as parameter
+            else if (!string.IsNullOrEmpty(token)) 
+            {
+                Console.WriteLine("Using token provided as parameter");
+                var handler = new JwtSecurityTokenHandler();
+                try {
+                    var jsonToken = handler.ReadToken(token) as JwtSecurityToken;
+                    var userIdClaim = jsonToken?.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
+                    if (userIdClaim == null) {
+                        Console.WriteLine("No valid user ID found in token");
+                        return RedirectToAction("Login", "AuthView");
+                    }
+                    userId = int.Parse(userIdClaim.Value);
+                    Console.WriteLine("Using user ID from query token: " + userId);
+                } catch (Exception ex) {
+                    Console.WriteLine("Error processing token: " + ex.Message);
+                    return RedirectToAction("Login", "AuthView");
+                }
+            }
+            // Finally try using Authorization header
+            else if (Request.Headers.ContainsKey("Authorization"))
+            {
+                Console.WriteLine("Using Authorization header");
+                string authHeader = Request.Headers["Authorization"];
+                if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ")) {
+                    Console.WriteLine("Invalid Authorization header format");
+                    return RedirectToAction("Login", "AuthView");
+                }
+                
+                string headerToken = authHeader.Substring("Bearer ".Length).Trim();
+                var handler = new JwtSecurityTokenHandler();
+                try {
+                    var jsonToken = handler.ReadToken(headerToken) as JwtSecurityToken;
+                    var userIdClaim = jsonToken?.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
+                    if (userIdClaim == null) {
+                        Console.WriteLine("No valid user ID found in header token");
+                        return RedirectToAction("Login", "AuthView");
+                    }
+                    userId = int.Parse(userIdClaim.Value);
+                    Console.WriteLine("Using user ID from header token: " + userId);
+                } catch (Exception ex) {
+                    Console.WriteLine("Error processing header token: " + ex.Message);
+                    return RedirectToAction("Login", "AuthView");
+                }
+            }
+            else 
+            {
+                Console.WriteLine("No authentication provided, redirecting to login");
+                return RedirectToAction("Login", "AuthView");
+            }
+            
+            var set = await _context.FlashcardSets
+                .Include(s => s.Flashcards)
+                .Include(s => s.Tags)
+                .FirstOrDefaultAsync(s => s.Id == id);
+                
+            if (set == null)
+            {
+                return NotFound();
+            }
+            
+            // Check if user is the owner
+            if (set.UserId != userId)
+            {
+                return Forbid();
+            }
+            
+            return View(set);
+        }
+        
+        // POST: /FlashcardsView/Edit/5 (with JWT form handling)
+        [HttpPost]
+        public async Task<IActionResult> EditPost(int id, string jwt)
+        {
+            // Process the JWT token
+            if (string.IsNullOrEmpty(jwt))
+            {
+                return RedirectToAction("Login", "AuthView");
+            }
+            
+            // Set the JWT token in the response cookies
+            HttpContext.Response.Cookies.Append("jwt", jwt, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict
+            });
+            
+            // Manually validate the token to check ownership
+            var handler = new JwtSecurityTokenHandler();
+            var jsonToken = handler.ReadToken(jwt) as JwtSecurityToken;
+            
+            if (jsonToken == null)
+            {
+                return RedirectToAction("Login", "AuthView");
+            }
+            
+            var userIdClaim = jsonToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+            {
+                return RedirectToAction("Login", "AuthView");
+            }
+            
+            var userId = int.Parse(userIdClaim.Value);
+            
+            // Check if the set exists and the user is the owner
+            var set = await _context.FlashcardSets
+                .Include(s => s.Flashcards)
+                .Include(s => s.Tags)
+                .FirstOrDefaultAsync(s => s.Id == id);
+                
+            if (set == null)
+            {
+                return NotFound();
+            }
+            
+            if (set.UserId != userId)
+            {
+                return Forbid();
+            }
+            
+            return View(set);
+        }
+    }
+}

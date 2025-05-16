@@ -2,12 +2,11 @@ using System;
 using System.Collections.Generic;
 
 namespace flashcardApp.Models
-{
-    public enum Visibility
+{    public enum Visibility
     {
-        Public,
-        Friends,
-        Private
+        Public = 0,   // Maps to 'public' in the database
+        Friends = 1,  // Maps to 'friends' in the database
+        Private = 2   // Maps to 'private' in the database
     }
 
     public class FlashcardSet
