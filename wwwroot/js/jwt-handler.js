@@ -1,4 +1,100 @@
 // JWT Handler for MVC Views
+
+// IMMEDIATE jQuery AJAX setup - do this at the top level before any events
+// This ensures any script using jQuery has the token set up
+(function() {
+  const token = localStorage.getItem("token");
+  if (token && typeof $ !== 'undefined' && $.ajax) {
+    console.log("Setting up immediate Authorization header for jQuery AJAX");
+    $.ajaxSetup({
+      beforeSend: function(xhr) {
+        xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+      }
+    });
+    
+    // Also patch the $.ajax method directly
+    const originalAjax = $.ajax;
+    $.ajax = function(settings) {
+      settings = settings || {};
+      settings.headers = settings.headers || {};
+      if (!settings.headers["Authorization"]) {
+        settings.headers["Authorization"] = `Bearer ${token}`;
+      }
+      return originalAjax.call($, settings);
+    };
+  }
+    // Check token on page load to handle browser history navigation
+  document.addEventListener('DOMContentLoaded', checkTokenOnNavigate);
+  
+  // Also handle when the user navigates with browser history (back/forward buttons)
+  window.addEventListener('popstate', function(event) {
+    console.log("Back/forward button navigation detected");
+    checkTokenOnNavigate();
+    handleBackButtonNavigation();
+  });
+  
+  function checkTokenOnNavigate() {
+    console.log("Navigation detected, checking token state...");
+    // Get the current token
+    const token = localStorage.getItem("token");
+    const currentPath = window.location.pathname;
+    
+    // Track the navigation history
+    const prevPage = sessionStorage.getItem("currentPage");
+    sessionStorage.setItem("previousPage", prevPage || "");
+    sessionStorage.setItem("currentPage", currentPath);
+    
+    console.log(`Navigation from ${prevPage || 'unknown'} to ${currentPath}`);
+    
+    // Check if we're on a protected page
+    const isProtectedPage = 
+      currentPath.includes("/FlashcardsView/MySets") ||
+      currentPath.includes("/FlashcardsView/Create") ||
+      currentPath.includes("/FlashcardsView/Edit/") ||
+      currentPath.includes("/FlashcardsView/Study/");
+      
+    console.log("Current path:", currentPath, "Protected:", isProtectedPage);
+
+    if (isProtectedPage) {
+      console.log("Protected page detected, token:", token ? "present" : "absent");
+      
+      // If we're on a protected page but don't have a token, check if we have a backup token
+      if (!token) {
+        const backupToken = localStorage.getItem("jwtBackup");
+        if (backupToken) {
+          console.log("No primary token found but backup exists, restoring from backup");
+          localStorage.setItem("token", backupToken);
+          token = backupToken;
+        } else {
+          console.log("No token found after navigation to protected page, redirecting to login");
+          window.location.replace("/AuthView/Login");
+          return;
+        }
+      }
+      
+      // Always ensure token is in URL for protected pages (this helps with back button)
+      if (!window.location.search.includes("token=")) {
+        console.log("Adding token to URL after navigation");
+        const separator = window.location.search ? '&' : '?';
+        const newUrl = window.location.pathname + window.location.search + 
+                      separator + "token=" + encodeURIComponent(token);
+        // Use replaceState to avoid creating new history entries
+        window.history.replaceState({}, document.title, newUrl);
+        
+        // Also setup AJAX headers again to be extra safe
+        if (typeof $ !== 'undefined' && $.ajax) {
+          console.log("Re-establishing AJAX Authorization headers after navigation");
+          $.ajaxSetup({
+            beforeSend: function(xhr) {
+              xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+            }
+          });
+        }
+      }
+    }
+  }
+})();
+
 // Helper function to parse JWT tokens
 function parseJwt(token) {
   if (!token) return null;
@@ -224,8 +320,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  // Debug function to check if the token is valid
-  window.validateJwtToken = function () {
+  // Debug function to check if the token is valid  window.validateJwtToken = function () {
     const token = localStorage.getItem("token");
     if (!token) {
       console.error("No token found in localStorage");
@@ -249,6 +344,26 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         console.log("Token valid until", expDate.toLocaleString());
       }
+      
+      // Check for nameid and verify it's a valid numeric ID
+      if (!claims.nameid) {
+        console.error("Token missing user ID (nameid claim)");
+        return false;
+      }
+      
+      const userId = parseInt(claims.nameid, 10);
+      if (isNaN(userId) || userId <= 0) {
+        console.error("Invalid user ID in token:", claims.nameid);
+        return false;
+      }
+      
+      console.log("Token validated, User ID:", userId);
+      
+      // Update user_id cookie to ensure consistent identification
+      document.cookie = `user_id=${userId}; path=/; max-age=${60*60*24*7}`; // 7 days
+      
+      // Store the numeric user ID in localStorage too
+      localStorage.setItem("userId", userId.toString());
 
       console.log("Token claims:", claims);
       return true;
@@ -256,7 +371,7 @@ document.addEventListener("DOMContentLoaded", function () {
       console.error("Error validating token:", e);
       return false;
     }
-  };
+  },
 
   // Function to get user info from JWT token
   window.getUserInfoFromToken = function () {
@@ -266,13 +381,19 @@ document.addEventListener("DOMContentLoaded", function () {
     const claims = parseJwt(token);
     if (!claims) return null;
 
+    // Log all claims for debugging
+    console.log("All JWT claims in token:", claims);
+
     return {
       username: claims.unique_name || claims.name,
       userId: claims.nameid,
+      // Make sure nameid is returned as a number - parseInt for safety
+      userIdNumber: parseInt(claims.nameid, 10),
       isAdmin: claims.role === "Admin" || claims["UserType"] === "Admin",
       email: claims.email,
     };
-  };
+  });
+
   // Only handle specific protected paths
   const protectedPaths = [
     { path: "/FlashcardsView/MySets", selector: "#mySetsItem a" },
@@ -392,4 +513,54 @@ document.addEventListener("DOMContentLoaded", function () {
     // Log success of our authentication strategy
     console.log("Using Authorization header-based authentication strategy");
   }
-});
+  
+  // Function to handle back button navigation specifically
+  function handleBackButtonNavigation() {
+    const token = localStorage.getItem("token");
+    const currentPath = window.location.pathname;
+    
+    // If we have a token and we're on a protected page
+    if (token && (
+      currentPath.includes("/FlashcardsView/MySets") ||
+      currentPath.includes("/FlashcardsView/Create") ||
+      currentPath.includes("/FlashcardsView/Edit/") ||
+      currentPath.includes("/FlashcardsView/Study/")
+    )) {
+      console.log("Back button detected on protected page, ensuring token is applied");
+      
+      // For edit and study pages, reload with token parameter if missing
+      if ((currentPath.includes("/FlashcardsView/Edit/") || 
+           currentPath.includes("/FlashcardsView/Study/")) && 
+          !window.location.search.includes("token=")) {
+        
+        console.log("Back navigation to protected page, adding token parameter");
+        const separator = window.location.search ? '&' : '?';
+        const newUrl = window.location.pathname + separator + "token=" + encodeURIComponent(token);
+        
+        // Use replace to avoid adding to history
+        window.location.replace(newUrl);
+        return;
+      }
+      
+      // For all protected pages, ensure jQuery auth headers are set
+      if (typeof $ !== 'undefined' && $.ajax) {
+        console.log("Re-applying Authorization headers after back navigation");
+        $.ajaxSetup({
+          beforeSend: function(xhr) {
+            xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+          }
+        });
+      }
+    }
+    
+    // If we don't have a token but we're on a protected page, redirect to login
+    if (!token && (
+      currentPath.includes("/FlashcardsView/MySets") ||
+      currentPath.includes("/FlashcardsView/Create") ||
+      currentPath.includes("/FlashcardsView/Edit/") ||
+      currentPath.includes("/FlashcardsView/Study/")
+    )) {
+      console.log("Back button to protected page but no token, redirecting to login");
+      window.location.href = "/AuthView/Login";
+    }
+  }

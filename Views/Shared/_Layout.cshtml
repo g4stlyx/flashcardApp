@@ -22,11 +22,8 @@
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
-                        </li>
-                        <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="FlashcardsView"
-                                asp-action="Index">Kartlar</a>
+                                asp-action="Index">Herkese Açık Setler</a>
                         </li>
                         <li class="nav-item" id="mySetsItem" style="display: none;">
                             <a class="nav-link text-dark" href="/FlashcardsView/MySets">Setlerim</a>
@@ -34,6 +31,10 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home"
                                 asp-action="AuthDebug">Auth Debug</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Home"
+                                asp-action="UserSetsDebug">User Sets Debug</a>
                         </li>
                     </ul>                    
                     <ul class="navbar-nav">
@@ -63,9 +64,10 @@
     </footer>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="~/js/site.js" asp-append-version="true"></script>
-    <!-- Auth handling -->
+    <script src="~/js/site.js" asp-append-version="true"></script>    <!-- Auth handling -->
     <script src="~/js/jwt-handler.js" asp-append-version="true"></script>
+    <!-- User ID fix script -->
+    <script src="~/js/fix-user-id.js" asp-append-version="true"></script>
     <!-- Add debug auth information to console -->
     <script>
         console.log("Debug Auth Info: Token in localStorage:", localStorage.getItem('token') ? "Present (length: " + localStorage.getItem('token').length + ")" : "Not present");
@@ -100,11 +102,21 @@
                 $('#loginItem').removeClass('d-none');
                 $('#logoutItem').addClass('d-none');
                 $('#mySetsItem').hide();
-            }
-            // Handle logout
+            }            // Handle logout
             $('#logoutLink').click(function (e) {
                 e.preventDefault();
+                // Clear all auth-related localStorage items
                 localStorage.removeItem('token');
+                localStorage.removeItem('jwtBackup');
+                localStorage.removeItem('userId');
+                localStorage.removeItem('lastAuthPath');
+                localStorage.removeItem('authInProgress');
+                
+                // Clear all auth-related cookies
+                document.cookie = 'jwt=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                document.cookie = 'user_id=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                
+                console.log("All authentication data cleared");
                 window.location.href = '/AuthView/Login';
             });
         });

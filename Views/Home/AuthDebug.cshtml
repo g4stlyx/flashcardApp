@@ -78,6 +78,21 @@
             </div>
         </div>
     </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h2>User and Claims Debugging</h2>
+        </div>
+        <div class="card-body">
+            <div class="mb-3">
+                <button id="checkUserId" class="btn btn-warning">Check User ID From Token</button>
+            </div>
+            <div class="mb-3">
+                <label for="userDebugInfo" class="form-label">User Debug Information:</label>
+                <pre id="userDebugInfo" class="border p-3 bg-light">No user debug info available</pre>
+            </div>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
@@ -97,6 +112,7 @@
             document.getElementById("testMySetsQuery").addEventListener("click", testMySetsQuery);
             document.getElementById("testMySetsHandler").addEventListener("click", testMySetsHandler);
             document.getElementById("testNavigationTool").addEventListener("click", openNavigationTestTool);
+            document.getElementById("checkUserId").addEventListener("click", checkUserIdFromToken);
         });
         
         function updateAuthStatus() {
@@ -286,6 +302,58 @@
         
         function openNavigationTestTool() {
             window.open('/api/AuthDebug/test-navigation', '_blank');
+        }
+          function checkUserIdFromToken() {
+            const token = localStorage.getItem("token");
+            if (!token) {
+                document.getElementById("userDebugInfo").innerText = "No JWT token found in localStorage";
+                return;
+            }
+            
+            try {
+                // Parse token
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+
+                const claims = JSON.parse(jsonPayload);
+                
+                // Extract user ID and info
+                const userId = claims.nameid;
+                const username = claims.unique_name || claims.name;
+                const email = claims.email;
+                const role = claims.role;
+                
+                // Build debug info
+                let debugInfo = "User ID Analysis:\n";
+                debugInfo += `Raw User ID from token: ${userId}\n`;
+                debugInfo += `Username: ${username}\n`;
+                debugInfo += `Email: ${email}\n`;
+                debugInfo += `Role: ${role}\n\n`;
+                
+                debugInfo += "Raw Claims:\n";
+                debugInfo += JSON.stringify(claims, null, 2);
+                
+                document.getElementById("userDebugInfo").innerText = debugInfo;
+                
+                // Also add a check for MySets route
+                fetch(`/FlashcardsView/MySets?userId=${userId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                }).then(response => {
+                    debugInfo += `\n\nTest request to MySets returned: ${response.status} ${response.statusText}`;
+                    document.getElementById("userDebugInfo").innerText = debugInfo;
+                }).catch(error => {
+                    debugInfo += `\n\nTest request to MySets failed: ${error}`;
+                    document.getElementById("userDebugInfo").innerText = debugInfo;
+                });
+                
+            } catch (e) {
+                document.getElementById("userDebugInfo").innerText = `Error analyzing token: ${e.message}`;
+            }
         }
     </script>
 }

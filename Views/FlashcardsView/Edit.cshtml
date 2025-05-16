@@ -251,20 +251,89 @@
                     exampleSentence: $('#exampleSentence').val() || null,
                     imageUrl: $('#imageUrl').val() || null
                 };
-                
                 if (flashcardId == 0) {
+                    // Validate flashcardData
+                    if (!flashcardData.term || flashcardData.term.trim() === '') {
+                        alert('Term is required');
+                        return;
+                    }
+                    
+                    if (!flashcardData.definition || flashcardData.definition.trim() === '') {
+                        alert('Definition is required');
+                        return;
+                    }
+                    
+                    console.log('Creating flashcard with data:', flashcardData);
+                    
                     // Create new flashcard
                     $.ajax({
                         url: '/api/flashcards',
                         type: 'POST',
                         contentType: 'application/json',
                         data: JSON.stringify(flashcardData),
-                        success: function() {
+                        headers: {
+                            'Authorization': 'Bearer ' + localStorage.getItem('token')
+                        },
+                        success: function(response) {
+                            console.log('Flashcard created successfully:', response);
                             $('#addFlashcardModal').modal('hide');
-                            location.reload(); // Reload to show the new flashcard
+                            
+                            // Give a slight delay before reloading to ensure the server has processed the data
+                            setTimeout(function() {
+                                location.reload(); // Reload to show the new flashcard
+                            }, 500);
                         },
                         error: function(xhr) {
-                            alert('Error creating flashcard: ' + (xhr.responseJSON?.message || 'Unknown error'));
+                            console.error('Error creating flashcard:', xhr);
+                            console.error('Status:', xhr.status);
+                            console.error('Status text:', xhr.statusText);
+                            console.error('Response:', xhr.responseText);
+                            
+                            if (xhr.status === 200 || xhr.status === 201) {
+                                // Sometimes the server returns success but the client reports an error
+                                // This could happen with parsing JSON or other client-side issues
+                                console.log('Server returned success code but client reported error. Proceeding anyway.');
+                                $('#addFlashcardModal').modal('hide');
+                                setTimeout(function() {
+                                    location.reload();
+                                }, 500);
+                                return;
+                            }
+                            
+                            let errorMsg = 'Unknown error';
+                            try {
+                                if (xhr.responseJSON) {
+                                    // If we have direct responseJSON, use it
+                                    if (xhr.responseJSON.message) {
+                                        errorMsg = xhr.responseJSON.message;
+                                    } else if (xhr.responseJSON.errors) {
+                                        errorMsg = 'Validation errors: ';
+                                        for (const field in xhr.responseJSON.errors) {
+                                            errorMsg += `${field} - ${xhr.responseJSON.errors[field].join(', ')}; `;
+                                        }
+                                    }
+                                } else if (xhr.responseText) {
+                                    // Try to parse the response text as JSON
+                                    try {
+                                        const response = JSON.parse(xhr.responseText);
+                                        if (response.errors) {
+                                            errorMsg = 'Validation errors: ';
+                                            for (const field in response.errors) {
+                                                errorMsg += `${field} - ${response.errors[field].join(', ')}; `;
+                                            }
+                                        } else {
+                                            errorMsg = response.message || response.title || 'Server error';
+                                        }
+                                    } catch (e) {
+                                        // If not valid JSON, use responseText directly
+                                        errorMsg = xhr.responseText;
+                                    }
+                                }
+                            } catch(e) {
+                                console.error('Error parsing error response:', e);
+                            }
+                            
+                            alert('Error creating flashcard: ' + errorMsg);
                         }
                     });
                 } else {

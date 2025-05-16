@@ -12,7 +12,13 @@ Env.Load();
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews()
+    .AddJsonOptions(options =>
+    {
+        // Handle circular references in JSON serialization
+        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve;
+        options.JsonSerializerOptions.MaxDepth = 64; // Increase max depth from default 32
+    });
 
 // Register AuthService
 builder.Services.AddScoped<IAuthService, AuthService>();

@@ -105,6 +105,64 @@ namespace flashcardApp.Controllers
             Console.WriteLine($"Using claim-based authentication, user ID: {userIdClaim}");
             var userId = int.Parse(userIdClaim);
             
+            // Debug information about the user ID
+            Console.WriteLine($"[DEBUG] User ID from token: {userId}");
+            
+            // Check if URL has a userId parameter that should override the token's userId
+            // This is specifically added to fix the issue where token claims might be wrong
+            int? urlProvidedUserId = null;
+            if (Request.Query.ContainsKey("userId") && int.TryParse(Request.Query["userId"], out int parsedId))
+            {
+                urlProvidedUserId = parsedId;
+                Console.WriteLine($"[DEBUG] URL provided user ID: {urlProvidedUserId}");
+            }
+            
+            Console.WriteLine($"[DEBUG] All registered users in database:");
+            var allUsers = await _context.Users.ToListAsync();
+            foreach (var user in allUsers)
+            {
+                Console.WriteLine($"  ID: {user.Id}, Username: {user.Username}, Email: {user.Email}");
+            }
+            
+            // If URL provided a userId, verify it's a valid user ID first
+            if (urlProvidedUserId.HasValue)
+            {
+                var userFromUrl = await _context.Users.FirstOrDefaultAsync(u => u.Id == urlProvidedUserId.Value);
+                if (userFromUrl != null)
+                {
+                    userId = urlProvidedUserId.Value;
+                    Console.WriteLine($"[DEBUG] Using URL-provided user ID: {userId} (Username: {userFromUrl.Username})");
+                }
+                else
+                {
+                    Console.WriteLine($"[DEBUG] URL-provided user ID {urlProvidedUserId} not found in database, using token ID");
+                }
+            }
+            
+            Console.WriteLine($"[DEBUG] Looking for sets with UserId = {userId}");
+            
+            // Maybe there was an error in lookup or database seed: verify user exists
+            var tokenUser = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            if (tokenUser == null)
+            {
+                Console.WriteLine($"[ERROR] User with ID {userId} from token not found in database!");
+                
+                // Try to find a user by the username claim instead
+                var usernameClaim = User.FindFirstValue(ClaimTypes.Name);
+                if (!string.IsNullOrEmpty(usernameClaim))
+                {
+                    Console.WriteLine($"[DEBUG] Trying to find user by username: {usernameClaim}");
+                    tokenUser = await _context.Users.FirstOrDefaultAsync(u => 
+                        u.Username.ToLower() == usernameClaim.ToLower());
+                        
+                    if (tokenUser != null)
+                    {
+                        Console.WriteLine($"[DEBUG] Found user by username: ID={tokenUser.Id}");
+                        userId = tokenUser.Id;
+                    }
+                }
+            }
+            
             try
             {
                 // First try getting sets without flashcards to be safe
@@ -171,51 +229,55 @@ namespace flashcardApp.Controllers
             // Add the token to the Authorization header for future requests
             HttpContext.Response.Headers.Append("X-JWT-Status", "Valid");
             
-            // Note: We're no longer setting cookies since they don't seem to be working properly
-            // Instead, we're relying on the client having the token in localStorage
-            // and sending it via Authorization header or query parameter
+            // Let's try adding a user ID cookie to ensure consistent user identification
+            var jwtHandler = new JwtSecurityTokenHandler();
+            var parsedToken = jwtHandler.ReadToken(jwt) as JwtSecurityToken;
+            var userIdFromClaims = parsedToken?.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
             
-            // Manually validate the token
-            var handler = new JwtSecurityTokenHandler();
-            JwtSecurityToken jsonToken;
+            if (!string.IsNullOrEmpty(userIdFromClaims))
+            {
+                Console.WriteLine($"Setting user_id cookie to {userIdFromClaims}");
+                var cookieOptions = new CookieOptions
+                {
+                    HttpOnly = false,  // Allow JavaScript to access
+                    Secure = HttpContext.Request.IsHttps,  // Secure in production
+                    SameSite = SameSiteMode.Lax,  // Allow some cross-site requests
+                    Expires = DateTime.UtcNow.AddDays(7)  // 7 days expiry
+                };
+                
+                Response.Cookies.Append("user_id", userIdFromClaims, cookieOptions);
+            }
             
             try
             {
-                jsonToken = handler.ReadToken(jwt) as JwtSecurityToken;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error reading token: {ex.Message}");
-                return RedirectToAction("Login", "AuthView");
-            }
-            
-            if (jsonToken == null)
-            {
-                Console.WriteLine("Invalid token: could not parse as JWT");
-                return RedirectToAction("Login", "AuthView");
-            }
-            
-            // Log all claims for debugging
-            Console.WriteLine("Claims in token:");
-            foreach (var claim in jsonToken.Claims)
-            {
-                Console.WriteLine($"  {claim.Type}: {claim.Value}");
-            }
-            
-            var userIdClaim = jsonToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
-            if (userIdClaim == null)
-            {
-                Console.WriteLine("Invalid token: missing NameIdentifier claim");
-                return RedirectToAction("Login", "AuthView");
-            }
-            
-            var userId = int.Parse(userIdClaim.Value);
-            
-            try
-            {
+                // Parse the token claims
+                var tokenClaims = parsedToken?.Claims;
+                if (tokenClaims == null)
+                {
+                    Console.WriteLine("Invalid token: no claims found");
+                    return RedirectToAction("Login", "AuthView");
+                }
+                
+                // Log all claims for debugging
+                Console.WriteLine("Claims in token:");
+                foreach (var claim in tokenClaims)
+                {
+                    Console.WriteLine($"  {claim.Type}: {claim.Value}");
+                }
+                
+                var userIdClaim = tokenClaims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
+                if (userIdClaim == null)
+                {
+                    Console.WriteLine("Invalid token: missing NameIdentifier claim");
+                    return RedirectToAction("Login", "AuthView");
+                }
+                
+                int userIdToUse = int.Parse(userIdClaim.Value);
+                Console.WriteLine($"Using user ID from token: {userIdToUse}");
+                
                 // First try getting sets without flashcards to be safe
                 var mySets = await _context.FlashcardSets
-                    .Where(s => s.UserId == userId)
+                    .Where(s => s.UserId == userIdToUse)
                     .OrderByDescending(s => s.CreatedAt)
                     .ToListAsync();
                     
@@ -239,9 +301,16 @@ namespace flashcardApp.Controllers
                 Console.WriteLine($"Error retrieving flashcard sets: {ex.Message}");
                 Console.WriteLine($"Stack trace: {ex.StackTrace}");
                 
+                // Get user ID from token
+                int userIdForError = 0;
+                if (!string.IsNullOrEmpty(userIdFromClaims) && int.TryParse(userIdFromClaims, out int parsedId))
+                {
+                    userIdForError = parsedId;
+                }
+                
                 // Return a simple view without flashcards as fallback
                 var simpleSets = await _context.FlashcardSets
-                    .Where(s => s.UserId == userId)
+                    .Where(s => s.UserId == userIdForError)
                     .OrderByDescending(s => s.CreatedAt)
                     .Select(s => new FlashcardSet
                     {
@@ -262,6 +331,7 @@ namespace flashcardApp.Controllers
         // GET: /FlashcardsView/Set/5
         public async Task<IActionResult> Set(int id)
         {
+            // Get the set and include flashcards
             var set = await _context.FlashcardSets
                 .Include(s => s.User)
                 .Include(s => s.Flashcards)
@@ -282,8 +352,8 @@ namespace flashcardApp.Controllers
                     return RedirectToAction("Login", "AuthView");
                 }
                 
-                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
-                if (set.UserId != userId)
+                var userIdFromClaim = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+                if (set.UserId != userIdFromClaim)
                 {
                     return Forbid();
                 }
@@ -343,22 +413,22 @@ namespace flashcardApp.Controllers
             if (set.Visibility == Visibility.Private)
             {
                 // Validate the JWT token manually
-                var handler = new JwtSecurityTokenHandler();
-                var jsonToken = handler.ReadToken(jwt) as JwtSecurityToken;
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var jsonTokenObj = tokenHandler.ReadToken(jwt) as JwtSecurityToken;
                 
-                if (jsonToken == null)
+                if (jsonTokenObj == null)
                 {
                     return RedirectToAction("Login", "AuthView");
                 }
                 
-                var userIdClaim = jsonToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
+                var userIdClaim = jsonTokenObj.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
                 if (userIdClaim == null)
                 {
                     return RedirectToAction("Login", "AuthView");
                 }
                 
-                var userId = int.Parse(userIdClaim.Value);
-                if (set.UserId != userId)
+                var userIdFromToken = int.Parse(userIdClaim.Value);
+                if (set.UserId != userIdFromToken)
                 {
                     return Forbid();
                 }
@@ -403,8 +473,8 @@ namespace flashcardApp.Controllers
                     return RedirectToAction("Login", "AuthView");
                 }
                 
-                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
-                if (set.UserId != userId)
+                var userIdFromClaim = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+                if (set.UserId != userIdFromClaim)
                 {
                     return Forbid();
                 }
@@ -445,22 +515,22 @@ namespace flashcardApp.Controllers
             if (set.Visibility == Visibility.Private)
             {
                 // Validate the JWT token manually
-                var handler = new JwtSecurityTokenHandler();
-                var jsonToken = handler.ReadToken(jwt) as JwtSecurityToken;
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var jsonTokenObj = tokenHandler.ReadToken(jwt) as JwtSecurityToken;
                 
-                if (jsonToken == null)
+                if (jsonTokenObj == null)
                 {
                     return RedirectToAction("Login", "AuthView");
                 }
                 
-                var userIdClaim = jsonToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
+                var userIdClaim = jsonTokenObj.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
                 if (userIdClaim == null)
                 {
                     return RedirectToAction("Login", "AuthView");
                 }
                 
-                var userId = int.Parse(userIdClaim.Value);
-                if (set.UserId != userId)
+                var userIdFromToken = int.Parse(userIdClaim.Value);
+                if (set.UserId != userIdFromToken)
                 {
                     return Forbid();
                 }

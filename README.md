@@ -18,6 +18,7 @@ something like "flow"/feed in instagram/x or other social platforms
 
 ### TODO
 * All the text seen by users will be Turkish. English may be added as a choice.
+* Token url'de parametre olarak gözükmemeli.
 * Controller security should be checked again. some does not have friends check (for sets) or owner check.
     * these should be checked using functions to be avoid repeating the same things.
 * 404, 403 etc. pages

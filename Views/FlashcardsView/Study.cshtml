@@ -37,17 +37,18 @@
                                 <i class="bi bi-shuffle"></i> Karıştır
                             </button>
                         </div>
-                    </div>
-                    <div class="card-body text-center" style="min-height: 300px;">
-                        <div class="d-flex flex-column justify-content-center align-items-center h-100" id="cardFront">
-                            <h3 id="termText"></h3>
+                    </div>                    <div class="card-body text-center" style="min-height: 300px; position: relative;">
+                        <!-- Card front with term -->
+                        <div id="cardFront" style="position: absolute; width: 100%; top: 0; bottom: 0; left: 0; right: 0; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                            <h3 id="termText" style="margin-bottom: 20px;"></h3>
                             <div id="imageContainer" class="mt-3" style="max-height: 200px; display: none;">
                                 <img id="cardImage" class="img-fluid" style="max-height: 200px;">
                             </div>
                         </div>
-                        <div class="d-flex flex-column justify-content-center align-items-center h-100" id="cardBack" style="display: none;">
-                            <p id="definitionText" class="lead"></p>
-                            <p id="exampleText" class="font-italic text-muted"></p>
+                        <!-- Card back with definition -->
+                        <div id="cardBack" style="position: absolute; width: 100%; top: 0; bottom: 0; left: 0; right: 0; display: none; flex-direction: column; justify-content: center; align-items: center;">
+                            <p id="definitionText" class="lead" style="margin-bottom: 20px;"></p>
+                            <p id="exampleText" class="text-muted fst-italic"></p>
                         </div>
                     </div>
                     <div class="card-footer text-center">
@@ -65,119 +66,22 @@
 
 @section Scripts {
     <script>
-        $(document).ready(function() {
-            // Get flashcards data from model
-            const flashcards = [
-                @foreach(var card in Model.Flashcards)
-                {
-                    @:{ 
-                    @:  id: @card.Id,
-                    @:  term: "@Html.Raw(Json.Serialize(card.Term))",
-                    @:  definition: "@Html.Raw(Json.Serialize(card.Definition))",
-                    @:  imageUrl: "@Html.Raw(Json.Serialize(card.ImageUrl))",
-                    @:  exampleSentence: "@Html.Raw(Json.Serialize(card.ExampleSentence))"
-                    @:},
-                }
-            ];
-
-            let currentIndex = 0;
-            let isFlipped = false;
-            
-            // Initialize with the first card
-            displayCard(currentIndex);
-            
-            // Flip card
-            $("#flipBtn").click(function() {
-                flipCard();
-            });
-            
-            // Next card
-            $("#nextBtn").click(function() {
-                if (currentIndex < flashcards.length - 1) {
-                    currentIndex++;
-                    isFlipped = false;
-                    displayCard(currentIndex);
-                    updateNavButtons();
-                }
-            });
-            
-            // Previous card
-            $("#prevBtn").click(function() {
-                if (currentIndex > 0) {
-                    currentIndex--;
-                    isFlipped = false;
-                    displayCard(currentIndex);
-                    updateNavButtons();
-                }
-            });
-            
-            // Shuffle cards
-            $("#shuffleBtn").click(function() {
-                shuffleArray(flashcards);
-                currentIndex = 0;
-                isFlipped = false;
-                displayCard(currentIndex);
-                updateNavButtons();
-            });
-            
-            function displayCard(index) {
-                const card = flashcards[index];
-                
-                // Update term
-                $("#termText").text(card.term);
-                
-                // Update image if available
-                if (card.imageUrl) {
-                    $("#cardImage").attr("src", card.imageUrl);
-                    $("#imageContainer").show();
-                } else {
-                    $("#imageContainer").hide();
-                }
-                
-                // Update definition
-                $("#definitionText").text(card.definition);
-                
-                // Update example if available
-                if (card.exampleSentence) {
-                    $("#exampleText").text("Example: " + card.exampleSentence);
-                    $("#exampleText").show();
-                } else {
-                    $("#exampleText").hide();
-                }
-                
-                // Show front, hide back
-                $("#cardFront").show();
-                $("#cardBack").hide();
-                
-                // Update counter
-                $("#currentCardIndex").text(index + 1);
-                $("#totalCards").text(flashcards.length);
+        // Initialize global flashcards array with clean JSON data
+        window.flashcards = [
+            @foreach(var card in Model.Flashcards)
+            {
+                @:{ 
+                @:  id: @card.Id,
+                @:  term: @Json.Serialize(card.Term),
+                @:  definition: @Json.Serialize(card.Definition),
+                @:  imageUrl: @Json.Serialize(card.ImageUrl),
+                @:  exampleSentence: @Json.Serialize(card.ExampleSentence)
+                @:},
             }
-            
-            function flipCard() {
-                if (isFlipped) {
-                    $("#cardBack").hide();
-                    $("#cardFront").show();
-                    $("#flipBtn").text("Flip Card");
-                } else {
-                    $("#cardFront").hide();
-                    $("#cardBack").show();
-                    $("#flipBtn").text("Show Term");
-                }
-                isFlipped = !isFlipped;
-            }
-            
-            function updateNavButtons() {
-                $("#prevBtn").prop("disabled", currentIndex === 0);
-                $("#nextBtn").prop("disabled", currentIndex === flashcards.length - 1);
-            }
-            
-            function shuffleArray(array) {
-                for (let i = array.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [array[i], array[j]] = [array[j], array[i]];
-                }
-            }
-        });
-    </script>
+        ];
+        
+        console.log("Flashcards loaded:", window.flashcards);
+        </script>
+    <!-- All functionality is now in the study-page-handler.js file -->
+    <script src="~/js/study-page-handler.js"></script>
 }

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using flashcardApp.Models;
 using flashcardApp.Authentication;
 using System.Security.Claims;
+using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Linq;
@@ -82,9 +83,7 @@ namespace flashcardApp.Controllers
             if (set.UserId != userId && !User.IsInRole("Admin"))
             {
                 return Forbid();
-            }
-
-            var flashcard = new Flashcard
+            }            var flashcard = new Flashcard
             {
                 SetId = request.SetId,
                 Term = request.Term,
@@ -94,11 +93,30 @@ namespace flashcardApp.Controllers
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
-
-            _context.Flashcards.Add(flashcard);
-            _context.SaveChanges();
-
-            return CreatedAtAction(nameof(GetFlashcard), new { id = flashcard.Id }, flashcard);
+            try
+            {
+                _context.Flashcards.Add(flashcard);
+                _context.SaveChanges();
+                
+                // Return a simplified version of the flashcard to avoid circular references
+                return CreatedAtAction(nameof(GetFlashcard), new { id = flashcard.Id }, new
+                {
+                    flashcard.Id,
+                    flashcard.SetId,
+                    flashcard.Term,
+                    flashcard.Definition,
+                    flashcard.ImageUrl,
+                    flashcard.ExampleSentence,
+                    flashcard.CreatedAt,
+                    flashcard.UpdatedAt
+                });
+            }
+            catch (Exception ex)
+            {
+                // Log the exception
+                Console.Error.WriteLine($"Error creating flashcard: {ex.Message}");
+                return StatusCode(500, new { message = ex.Message });
+            }
         }
 
         // PUT: api/flashcards/5
@@ -200,13 +218,20 @@ namespace flashcardApp.Controllers
             return Ok(flashcards);
         }
     }
-
     public class FlashcardRequest
     {
+        [Required]
         public int SetId { get; set; }
+
+        [Required]
+        [StringLength(255, ErrorMessage = "Term cannot be longer than 255 characters")]
         public string Term { get; set; }
+
+        [Required]
         public string Definition { get; set; }
-        public string ImageUrl { get; set; }
-        public string ExampleSentence { get; set; }
+
+        public string? ImageUrl { get; set; }
+
+        public string? ExampleSentence { get; set; }
     }
 }
