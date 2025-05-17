@@ -1,0 +1,47 @@
+/* Friends functionality styling */
+
+/* Friend request badge */
+#friendsItem .badge {
+    position: relative;
+    top: -1px;
+}
+
+/* Friend list item styling */
+.friend-list-item {
+    transition: all 0.3s ease;
+}
+
+.friend-list-item:hover {
+    background-color: #f8f9fa;
+}
+
+/* Friend request form */
+#friendRequestResult {
+    transition: opacity 0.5s ease;
+}
+
+/* Friend action buttons */
+.friend-action {
+    transition: all 0.2s ease;
+}
+
+.friend-action:hover {
+    transform: scale(1.05);
+}
+
+/* Notification for new pending requests */
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.15);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.pulse-animation {
+    animation: pulse 1.5s infinite;
+}

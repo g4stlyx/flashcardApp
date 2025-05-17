@@ -1,0 +1,298 @@
+@model dynamic
+@{
+    ViewData["Title"] = "Arkadaşlarım";
+}
+
+<div class="container mt-4">
+    <h2 class="mb-4">@ViewData["Title"]</h2>
+
+    <!-- Friend Requests Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4>Arkadaşlık İstekleri</h4>
+        </div>
+        <div class="card-body">
+            @if (Model.ReceivedRequests.Count > 0)
+            {
+                <h5>Gelen İstekler</h5>
+                <ul class="list-group mb-3">
+                    @foreach (var request in Model.ReceivedRequests)
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-center friend-list-item">
+                            <div>
+                                <strong>@request.Sender.Username</strong> 
+                                <small class="text-muted">(@request.CreatedAt.ToString("dd.MM.yyyy"))</small>
+                            </div>
+                            <div>
+                                <form method="post" action="/FlashcardsView/AcceptFriendRequest" class="d-inline">
+                                    <input type="hidden" name="requestId" value="@request.Id" />
+                                    <button type="submit" class="btn btn-sm btn-success">Kabul Et</button>
+                                </form>
+                                <form method="post" action="/FlashcardsView/DeclineFriendRequest" class="d-inline">
+                                    <input type="hidden" name="requestId" value="@request.Id" />
+                                    <button type="submit" class="btn btn-sm btn-danger">Reddet</button>
+                                </form>
+                            </div>
+                        </li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <p>Bekleyen arkadaşlık isteği bulunmamaktadır.</p>
+            }
+
+            @if (Model.SentRequests.Count > 0)
+            {
+                <h5>Gönderilen İstekler</h5>
+                <ul class="list-group">
+                    @foreach (var request in Model.SentRequests)
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>@request.Receiver.Username</strong> 
+                                <small class="text-muted">(@request.CreatedAt.ToString("dd.MM.yyyy"))</small>
+                                <span class="badge bg-primary rounded-pill">@(request.Status.ToString())</span>
+                            </div>                            @if(request.Status == flashcardApp.Models.FriendRequestStatus.Pending)
+                            {
+                                <form class="cancel-request-form d-inline">
+                                    <input type="hidden" name="requestId" value="@request.Id" />
+                                    <button type="submit" class="btn btn-sm btn-warning">İptal Et</button>
+                                </form>
+                            }
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+    <!-- Add New Friend Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4>Arkadaş Ekle</h4>
+        </div>
+        <div class="card-body">
+            <form id="friendRequestForm">
+                <div class="input-group mb-3">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" name="username" id="usernameInput" class="form-control" placeholder="Kullanıcı adını girin" required>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-send-plus"></i> İstek Gönder</button>
+                </div>
+                <div id="friendRequestResult" class="mt-2" style="display: none;"></div>
+                @if (TempData["ErrorMessage"] != null)
+                {
+                    <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+                }
+                @if (TempData["SuccessMessage"] != null)
+                {
+                    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+                }
+            </form>
+        </div>
+    </div>
+
+    <!-- Friend Suggestions -->
+    @await Component.InvokeAsync("FriendSuggestions", new { maxSuggestions = 6 })
+
+    <!-- Current Friends List -->
+    <div class="card">
+        <div class="card-header">
+            <h4>Arkadaşlarım</h4>
+        </div>
+        <div class="card-body">
+            @if (Model.Friends.Count > 0)
+            {
+                <ul class="list-group">
+                    @foreach (var friend in Model.Friends){
+                        <li class="list-group-item d-flex justify-content-between align-items-center friend-list-item">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    <i class="bi bi-person-circle" style="font-size: 2rem;"></i>
+                                </div>
+                                <div>
+                                    <strong>@friend.Username</strong>
+                                </div>
+                            </div>
+                            <div>
+                                <a href="/FlashcardsView/UserSets/@friend.Id" class="btn btn-sm btn-info me-2">
+                                    <i class="bi bi-card-list"></i> Setleri Gör
+                                </a>
+                                <form method="post" action="/FlashcardsView/RemoveFriend" class="d-inline">
+                                    <input type="hidden" name="friendId" value="@friend.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-person-dash"></i> Çıkar
+                                    </button>
+                                </form>
+                            </div>
+                        </li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <p>Henüz arkadaşınız bulunmamaktadır.</p>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/jwt-handler.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Show navigation items for logged in users
+            document.getElementById('friendsItem').style.display = 'block';
+            document.getElementById('friendSetsItem').style.display = 'block';
+            
+            // Handle friend request form submission
+            const friendRequestForm = document.getElementById('friendRequestForm');
+            if (friendRequestForm) {
+                friendRequestForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    const username = document.getElementById('usernameInput').value;
+                    const resultDiv = document.getElementById('friendRequestResult');
+                    
+                    // Send friend request via API
+                    fetch('/api/friends/send-request', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + localStorage.getItem('token')
+                        },
+                        body: JSON.stringify({ username: username })
+                    })
+                    .then(response => {
+                        const isSuccess = response.ok;
+                        return response.json().then(data => ({
+                            success: isSuccess,
+                            data: data
+                        }));
+                    })
+                    .then(result => {
+                        resultDiv.style.display = 'block';
+                        
+                        if (result.data.message) {
+                            if (result.success) {
+                                resultDiv.innerHTML = `<div class="alert alert-success">${result.data.message}</div>`;
+                                document.getElementById('usernameInput').value = '';
+                            } else {
+                                resultDiv.innerHTML = `<div class="alert alert-danger">${result.data.message}</div>`;
+                            }
+                            
+                            // Hide the message after 5 seconds
+                            setTimeout(() => {
+                                resultDiv.style.display = 'none';
+                            }, 5000);
+                        }
+                    })
+                    .catch(error => {
+                        resultDiv.style.display = 'block';
+                        resultDiv.innerHTML = '<div class="alert alert-danger">İstek gönderilirken bir hata oluştu.</div>';
+                        console.error('Error:', error);
+                    });
+                });
+            }
+            
+            // Handle accept/decline friend requests via AJAX
+            const acceptButtons = document.querySelectorAll('form[action="/FlashcardsView/AcceptFriendRequest"] button');
+            const declineButtons = document.querySelectorAll('form[action="/FlashcardsView/DeclineFriendRequest"] button');
+            
+            acceptButtons.forEach(button => {
+                const form = button.closest('form');
+                const requestId = form.querySelector('input[name="requestId"]').value;
+                
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    fetch('/api/friends/accept-request', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + localStorage.getItem('token')
+                        },
+                        body: JSON.stringify({ requestId: parseInt(requestId) })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        // Remove the request item from UI
+                        const requestItem = form.closest('li');
+                        requestItem.innerHTML = '<div class="alert alert-success">İstek kabul edildi. Sayfayı yenilemek için <a href="/FlashcardsView/Friends">tıklayın</a>.</div>';
+                        
+                        // Auto-refresh after 2 seconds
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 2000);
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+                });
+            });
+            declineButtons.forEach(button => {
+                const form = button.closest('form');
+                const requestId = form.querySelector('input[name="requestId"]').value;
+                
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    fetch('/api/friends/decline-request', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + localStorage.getItem('token')
+                        },
+                        body: JSON.stringify({ requestId: parseInt(requestId) })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        // Remove the request item from UI
+                        const requestItem = form.closest('li');
+                        requestItem.innerHTML = '<div class="alert alert-warning">İstek reddedildi.</div>';
+                        
+                        // Remove from DOM after 2 seconds
+                        setTimeout(() => {
+                            requestItem.remove();
+                        }, 2000);
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+                });
+            });
+            
+            // Handle cancel friend requests via AJAX
+            const cancelButtons = document.querySelectorAll('.cancel-request-form');
+            cancelButtons.forEach(form => {
+                const requestId = form.querySelector('input[name="requestId"]').value;
+                
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    fetch('/api/friends/cancel-request', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + localStorage.getItem('token')
+                        },
+                        body: JSON.stringify({ requestId: parseInt(requestId) })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        // Remove the request item from UI
+                        const requestItem = form.closest('li');
+                        requestItem.innerHTML = '<div class="alert alert-warning">İstek iptal edildi.</div>';
+                        
+                        // Remove from DOM after 2 seconds
+                        setTimeout(() => {
+                            requestItem.remove();
+                        }, 2000);
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+                });
+            });
+        });
+    </script>
+}

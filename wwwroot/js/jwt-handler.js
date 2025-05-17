@@ -51,7 +51,10 @@
       currentPath.includes("/FlashcardsView/MySets") ||
       currentPath.includes("/FlashcardsView/Create") ||
       currentPath.includes("/FlashcardsView/Edit/") ||
-      currentPath.includes("/FlashcardsView/Study/");
+      currentPath.includes("/FlashcardsView/Study/") ||
+      currentPath.includes("/FlashcardsView/Friends") ||
+      currentPath.includes("/FlashcardsView/FriendSets") ||
+      currentPath.includes("/FlashcardsView/UserSets/");
       
     console.log("Current path:", currentPath, "Protected:", isProtectedPage);
 
@@ -393,7 +396,6 @@ document.addEventListener("DOMContentLoaded", function () {
       email: claims.email,
     };
   });
-
   // Only handle specific protected paths
   const protectedPaths = [
     { path: "/FlashcardsView/MySets", selector: "#mySetsItem a" },
@@ -408,6 +410,18 @@ document.addEventListener("DOMContentLoaded", function () {
     {
       path: "/FlashcardsView/Study/",
       selector: 'a[href*="/FlashcardsView/Study/"]',
+    },
+    {
+      path: "/FlashcardsView/Friends",
+      selector: "#friendsItem a",
+    },
+    {
+      path: "/FlashcardsView/FriendSets",
+      selector: "#friendSetsItem a",
+    },
+    {
+      path: "/FlashcardsView/UserSets/",
+      selector: 'a[href*="/FlashcardsView/UserSets/"]',
     },
   ];
 
@@ -518,13 +532,15 @@ document.addEventListener("DOMContentLoaded", function () {
   function handleBackButtonNavigation() {
     const token = localStorage.getItem("token");
     const currentPath = window.location.pathname;
-    
     // If we have a token and we're on a protected page
     if (token && (
       currentPath.includes("/FlashcardsView/MySets") ||
       currentPath.includes("/FlashcardsView/Create") ||
       currentPath.includes("/FlashcardsView/Edit/") ||
-      currentPath.includes("/FlashcardsView/Study/")
+      currentPath.includes("/FlashcardsView/Study/") ||
+      currentPath.includes("/FlashcardsView/Friends") ||
+      currentPath.includes("/FlashcardsView/FriendSets") ||
+      currentPath.includes("/FlashcardsView/UserSets/")
     )) {
       console.log("Back button detected on protected page, ensuring token is applied");
       
@@ -552,13 +568,15 @@ document.addEventListener("DOMContentLoaded", function () {
         });
       }
     }
-    
     // If we don't have a token but we're on a protected page, redirect to login
     if (!token && (
       currentPath.includes("/FlashcardsView/MySets") ||
       currentPath.includes("/FlashcardsView/Create") ||
       currentPath.includes("/FlashcardsView/Edit/") ||
-      currentPath.includes("/FlashcardsView/Study/")
+      currentPath.includes("/FlashcardsView/Study/") ||
+      currentPath.includes("/FlashcardsView/Friends") ||
+      currentPath.includes("/FlashcardsView/FriendSets") ||
+      currentPath.includes("/FlashcardsView/UserSets/")
     )) {
       console.log("Back button to protected page but no token, redirecting to login");
       window.location.href = "/AuthView/Login";

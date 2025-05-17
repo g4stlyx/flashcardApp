@@ -1,0 +1,96 @@
+@model IEnumerable<flashcardApp.Models.FlashcardSet>
+@{
+    ViewData["Title"] = "Arkadaşlarımın Setleri";
+}
+
+<div class="container mt-4">    <h2 class="mb-4">@ViewData["Title"]</h2>
+
+    <div class="mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>Set Görünürlüğü</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex flex-wrap">
+                    <div class="me-4 mb-2">
+                        <span class="badge bg-light border">&nbsp;&nbsp;&nbsp;</span>
+                        <span class="ms-1">Herkese Açık</span>
+                    </div>
+                    <div>
+                        <span class="badge bg-warning bg-opacity-50">&nbsp;&nbsp;&nbsp;</span>
+                        <span class="ms-1">Arkadaşlara Özel</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        @if (Model.Any()){
+            @foreach (var set in Model){
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100 shadow-sm">
+                        @if(set.Visibility == flashcardApp.Models.Visibility.Friends)
+                        {
+                            <div class="card-header d-flex justify-content-between align-items-center bg-warning bg-opacity-50">
+                                <div>
+                                <h5 class="card-title mb-0">@set.Title</h5>
+                                </div>
+                                <div>
+                                    <span class="badge rounded-pill bg-primary me-1">
+                                        <i class="bi bi-people-fill"></i> Arkadaşlara Özel
+                                    </span>
+                                    <span class="badge rounded-pill bg-info text-dark">
+                                        <i class="bi bi-person-fill"></i> @set.User.Username
+                                    </span>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="card-header d-flex justify-content-between align-items-center bg-light">
+                                <div>
+                                <h5 class="card-title mb-0">@set.Title</h5>
+                                </div>
+                                <span class="badge rounded-pill bg-info text-dark">
+                                    <i class="bi bi-person-fill"></i> @set.User.Username
+                                </span>
+                            </div>
+                        }
+                        <div class="card-body">
+                            <p class="card-text">@set.Description</p>
+                            <div class="d-flex justify-content-between mt-3">
+                                <span class="badge bg-secondary"><i class="bi bi-card-list"></i> @set.Flashcards.Count kart</span>
+                                <small class="text-muted"><i class="bi bi-calendar3"></i> @set.CreatedAt.ToString("dd.MM.yyyy")</small>
+                            </div>
+                        </div>
+                        <div class="card-footer d-flex justify-content-between">
+                            <a href="/FlashcardsView/Set/@set.Id" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i> Görüntüle</a>
+                            <a href="/FlashcardsView/Study/@set.Id" class="btn btn-sm btn-success"><i class="bi bi-journal-check"></i> Çalış</a>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="col-12">
+                <div class="alert alert-info">
+                    <p>Arkadaşlarınızın hiç seti bulunmamaktadır.</p>
+                    <p>Arkadaş eklemek için <a href="/FlashcardsView/Friends">Arkadaşlarım</a> sayfasını ziyaret edebilirsiniz.</p>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/jwt-handler.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Show navigation items for logged in users
+            document.getElementById('friendsItem').style.display = 'block';
+            document.getElementById('friendSetsItem').style.display = 'block';
+        });
+    </script>
+}

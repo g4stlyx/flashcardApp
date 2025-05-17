@@ -712,5 +712,455 @@ namespace flashcardApp.Controllers
             
             return View(set);
         }
+        
+        // GET: /FlashcardsView/Friends
+        [Authentication.JwtAuthorize("Registered")]
+        public async Task<IActionResult> Friends()
+        {
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            
+            // Get all pending friend requests received by the user
+            var receivedRequests = await _context.FriendRequests
+                .Where(r => r.ReceiverId == userId && r.Status == FriendRequestStatus.Pending)
+                .Include(r => r.Sender)
+                .OrderByDescending(r => r.CreatedAt)
+                .ToListAsync();
+                
+            // Get all friend requests sent by the user
+            var sentRequests = await _context.FriendRequests
+                .Where(r => r.SenderId == userId)
+                .Include(r => r.Receiver)
+                .OrderByDescending(r => r.CreatedAt)
+                .ToListAsync();
+                
+            // Get all friends of the user
+            var friends = new List<User>();
+            
+            // Get friends where the user is UserId1
+            var friendships1 = await _context.Friends
+                .Where(f => f.UserId1 == userId)
+                .Include(f => f.User2)
+                .ToListAsync();
+                
+            // Get friends where the user is UserId2
+            var friendships2 = await _context.Friends
+                .Where(f => f.UserId2 == userId)
+                .Include(f => f.User1)
+                .ToListAsync();
+                
+            // Add User2 objects from friendships1
+            friends.AddRange(friendships1.Select(f => f.User2));
+            
+            // Add User1 objects from friendships2
+            friends.AddRange(friendships2.Select(f => f.User1));
+            
+            // Create the view model
+            var model = new 
+            {
+                ReceivedRequests = receivedRequests,
+                SentRequests = sentRequests,
+                Friends = friends
+            };
+            
+            return View(model);
+        }
+        
+        // POST: /FlashcardsView/SendFriendRequest
+        [HttpPost]
+        [Authentication.JwtAuthorize("Registered")]
+        public async Task<IActionResult> SendFriendRequest(string username)
+        {
+            var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            
+            // Find the target user
+            var targetUser = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+            if (targetUser == null)
+            {
+                TempData["ErrorMessage"] = "Kullanıcı bulunamadı.";
+                return RedirectToAction(nameof(Friends));
+            }
+            
+            // Don't allow sending request to self
+            if (targetUser.Id == currentUserId)
+            {
+                TempData["ErrorMessage"] = "Kendinize arkadaşlık isteği gönderemezsiniz.";
+                return RedirectToAction(nameof(Friends));
+            }
+            
+            // Check if already friends
+            var existingFriendship = await _context.Friends
+                .AnyAsync(f => (f.UserId1 == currentUserId && f.UserId2 == targetUser.Id) || 
+                              (f.UserId1 == targetUser.Id && f.UserId2 == currentUserId));
+                              
+            if (existingFriendship)
+            {
+                TempData["ErrorMessage"] = "Bu kullanıcı zaten arkadaşınız.";
+                return RedirectToAction(nameof(Friends));
+            }
+            
+            // Check if a request already exists
+            var existingRequest = await _context.FriendRequests
+                .FirstOrDefaultAsync(r => 
+                    (r.SenderId == currentUserId && r.ReceiverId == targetUser.Id) ||
+                    (r.SenderId == targetUser.Id && r.ReceiverId == currentUserId));
+                    
+            if (existingRequest != null)
+            {
+                if (existingRequest.SenderId == currentUserId)
+                {
+                    TempData["ErrorMessage"] = "Bu kullanıcıya zaten bir istek gönderdiniz.";
+                }
+                else
+                {
+                    TempData["ErrorMessage"] = "Bu kullanıcı size zaten bir istek göndermiş. Arkadaşlık isteği sayfanızı kontrol edin.";
+                }
+                return RedirectToAction(nameof(Friends));
+            }
+            
+            // Create the friend request
+            var friendRequest = new FriendRequest
+            {
+                SenderId = currentUserId,
+                ReceiverId = targetUser.Id,
+                Status = FriendRequestStatus.Pending,
+                CreatedAt = DateTime.UtcNow
+            };
+            
+            _context.FriendRequests.Add(friendRequest);
+            await _context.SaveChangesAsync();
+            
+            TempData["SuccessMessage"] = "Arkadaşlık isteği gönderildi.";
+            return RedirectToAction(nameof(Friends));
+        }
+        
+        // POST: /FlashcardsView/AcceptFriendRequest
+        [HttpPost]
+        [Authentication.JwtAuthorize("Registered")]
+        public async Task<IActionResult> AcceptFriendRequest(int requestId)
+        {
+            var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            
+            // Find the request
+            var request = await _context.FriendRequests
+                .FirstOrDefaultAsync(r => r.Id == requestId && r.ReceiverId == currentUserId);
+                
+            if (request == null)
+            {
+                TempData["ErrorMessage"] = "İstek bulunamadı.";
+                return RedirectToAction(nameof(Friends));
+            }
+            
+            // Update request status
+            request.Status = FriendRequestStatus.Accepted;
+            
+            // Create friendship
+            var friendship = new Friend
+            {
+                UserId1 = request.SenderId,
+                UserId2 = request.ReceiverId,
+                CreatedAt = DateTime.UtcNow
+            };
+            
+            _context.Friends.Add(friendship);
+            await _context.SaveChangesAsync();
+            
+            TempData["SuccessMessage"] = "Arkadaşlık isteği kabul edildi.";
+            return RedirectToAction(nameof(Friends));
+        }
+        
+        // POST: /FlashcardsView/DeclineFriendRequest
+        [HttpPost]
+        [Authentication.JwtAuthorize("Registered")]
+        public async Task<IActionResult> DeclineFriendRequest(int requestId)
+        {
+            var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            
+            // Find the request
+            var request = await _context.FriendRequests
+                .FirstOrDefaultAsync(r => r.Id == requestId && r.ReceiverId == currentUserId);
+                
+            if (request == null)
+            {
+                TempData["ErrorMessage"] = "İstek bulunamadı.";
+                return RedirectToAction(nameof(Friends));
+            }
+            
+            // Remove the request instead of just updating its status
+            _context.FriendRequests.Remove(request);
+            await _context.SaveChangesAsync();
+            
+            TempData["SuccessMessage"] = "Arkadaşlık isteği reddedildi.";
+            return RedirectToAction(nameof(Friends));
+        }
+        
+        // POST: /FlashcardsView/CancelFriendRequest
+        [HttpPost]
+        [Authentication.JwtAuthorize("Registered")]
+        public async Task<IActionResult> CancelFriendRequest(int requestId)
+        {
+            var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            
+            // Find the request
+            var request = await _context.FriendRequests
+                .FirstOrDefaultAsync(r => r.Id == requestId && r.SenderId == currentUserId);
+                
+            if (request == null)
+            {
+                TempData["ErrorMessage"] = "İstek bulunamadı.";
+                return RedirectToAction(nameof(Friends));
+            }
+            
+            // Remove the request
+            _context.FriendRequests.Remove(request);
+            await _context.SaveChangesAsync();
+            
+            TempData["SuccessMessage"] = "Arkadaşlık isteği iptal edildi.";
+            return RedirectToAction(nameof(Friends));
+        }
+        
+        // POST: /FlashcardsView/RemoveFriend
+        [HttpPost]
+        [Authentication.JwtAuthorize("Registered")]
+        public async Task<IActionResult> RemoveFriend(int friendId)
+        {
+            var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            
+            // Find the friendship
+            var friendship = await _context.Friends
+                .FirstOrDefaultAsync(f => 
+                    (f.UserId1 == currentUserId && f.UserId2 == friendId) || 
+                    (f.UserId1 == friendId && f.UserId2 == currentUserId));
+                    
+            if (friendship == null)
+            {
+                TempData["ErrorMessage"] = "Arkadaşlık bulunamadı.";
+                return RedirectToAction(nameof(Friends));
+            }
+            
+            // Remove the friendship
+            _context.Friends.Remove(friendship);
+            await _context.SaveChangesAsync();
+            
+            TempData["SuccessMessage"] = "Arkadaşlık silindi.";
+            return RedirectToAction(nameof(Friends));
+        }
+        
+        // GET: /FlashcardsView/UserSets/{id}
+        [Authentication.JwtAuthorize("Registered")]
+        public async Task<IActionResult> UserSets(int id)
+        {
+            var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            
+            // Verify these users are friends
+            var areFriends = await _context.Friends
+                .AnyAsync(f => 
+                    (f.UserId1 == currentUserId && f.UserId2 == id) || 
+                    (f.UserId1 == id && f.UserId2 == currentUserId));
+                    
+            if (!areFriends && currentUserId != id)
+            {
+                TempData["ErrorMessage"] = "Bu kullanıcının setlerini görüntüleme izniniz yok.";
+                return RedirectToAction(nameof(Friends));
+            }
+            
+            // Get the user's sets - include friends-only sets if they are friends
+            var sets = await _context.FlashcardSets
+                .Where(s => s.UserId == id && 
+                           (s.Visibility == Visibility.Public || 
+                            (s.Visibility == Visibility.Friends && areFriends) || 
+                            currentUserId == id))
+                .Include(s => s.User)
+                .Include(s => s.Flashcards)
+                .OrderByDescending(s => s.CreatedAt)
+                .ToListAsync();
+                
+            ViewBag.Username = await _context.Users
+                .Where(u => u.Id == id)
+                .Select(u => u.Username)
+                .FirstOrDefaultAsync();
+                
+            return View(sets);
+        }
+        
+        // GET: /FlashcardsView/FriendSets
+        [Authentication.JwtAuthorize("Registered")]
+        public async Task<IActionResult> FriendSets()
+        {
+            var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            
+            // Get all friends of the user
+            var friendIds = new List<int>();
+            
+            // Get friends where the user is UserId1
+            var friendships1 = await _context.Friends
+                .Where(f => f.UserId1 == currentUserId)
+                .Select(f => f.UserId2)
+                .ToListAsync();
+                
+            // Get friends where the user is UserId2
+            var friendships2 = await _context.Friends
+                .Where(f => f.UserId2 == currentUserId)
+                .Select(f => f.UserId1)
+                .ToListAsync();
+                
+            // Combine all friend IDs
+            friendIds.AddRange(friendships1);
+            friendIds.AddRange(friendships2);
+            
+            // Get both public and friends-only flashcard sets
+            var friendSets = await _context.FlashcardSets
+                .Where(s => friendIds.Contains(s.UserId) && 
+                           (s.Visibility == Visibility.Public || s.Visibility == Visibility.Friends))
+                .Include(s => s.User)
+                .Include(s => s.Flashcards)
+                .OrderByDescending(s => s.CreatedAt)
+                .ToListAsync();
+                
+            return View(friendSets);
+        }
+
+        // GET: api/friends/pending-requests
+        [HttpGet("api/friends/pending-requests")]
+        [Authentication.JwtAuthorize("Registered")]
+        public async Task<IActionResult> GetPendingFriendRequests()
+        {
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            
+            // Get count of pending friend requests received by the current user
+            var pendingRequestsCount = await _context.FriendRequests
+                .CountAsync(r => r.ReceiverId == userId && r.Status == FriendRequestStatus.Pending);
+                
+            return Json(new { pendingCount = pendingRequestsCount });
+        }
+        
+        // POST: api/friends/send-request
+        [HttpPost("api/friends/send-request")]
+        [Authentication.JwtAuthorize("Registered")]
+        public async Task<IActionResult> ApiSendFriendRequest([FromBody] ApiRequestModel model)
+        {
+            var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            
+            // Find the target user
+            var targetUser = await _context.Users.FirstOrDefaultAsync(u => u.Username == model.Username);
+            if (targetUser == null)
+            {
+                return NotFound(new { message = "Kullanıcı bulunamadı." });
+            }
+            
+            // Don't allow sending request to self
+            if (targetUser.Id == currentUserId)
+            {
+                return BadRequest(new { message = "Kendinize arkadaşlık isteği gönderemezsiniz." });
+            }
+            
+            // Check if already friends
+            var existingFriendship = await _context.Friends
+                .AnyAsync(f => (f.UserId1 == currentUserId && f.UserId2 == targetUser.Id) || 
+                              (f.UserId1 == targetUser.Id && f.UserId2 == currentUserId));
+                              
+            if (existingFriendship)
+            {
+                return BadRequest(new { message = "Bu kullanıcı zaten arkadaşınız." });
+            }
+            
+            // Check if a request already exists
+            var existingRequest = await _context.FriendRequests
+                .FirstOrDefaultAsync(r => 
+                    (r.SenderId == currentUserId && r.ReceiverId == targetUser.Id) ||
+                    (r.SenderId == targetUser.Id && r.ReceiverId == currentUserId));
+                    
+            if (existingRequest != null)
+            {
+                if (existingRequest.SenderId == currentUserId)
+                {
+                    return BadRequest(new { message = "Bu kullanıcıya zaten bir istek gönderdiniz." });
+                }
+                else
+                {
+                    return BadRequest(new { message = "Bu kullanıcı size zaten bir istek göndermiş." });
+                }
+            }
+            
+            // Create the friend request
+            var friendRequest = new FriendRequest
+            {
+                SenderId = currentUserId,
+                ReceiverId = targetUser.Id,
+                Status = FriendRequestStatus.Pending,
+                CreatedAt = DateTime.UtcNow
+            };
+            
+            _context.FriendRequests.Add(friendRequest);
+            await _context.SaveChangesAsync();
+            
+            return Ok(new { message = "Arkadaşlık isteği gönderildi." });
+        }
+        
+        // POST: api/friends/accept-request
+        [HttpPost("api/friends/accept-request")]
+        [Authentication.JwtAuthorize("Registered")]
+        public async Task<IActionResult> ApiAcceptFriendRequest([FromBody] ApiRequestIdModel model)
+        {
+            var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            
+            // Find the request
+            var request = await _context.FriendRequests
+                .FirstOrDefaultAsync(r => r.Id == model.RequestId && r.ReceiverId == currentUserId);
+                
+            if (request == null)
+            {
+                return NotFound(new { message = "İstek bulunamadı." });
+            }
+            
+            // Update request status
+            request.Status = FriendRequestStatus.Accepted;
+            
+            // Create friendship
+            var friendship = new Friend
+            {
+                UserId1 = request.SenderId,
+                UserId2 = request.ReceiverId,
+                CreatedAt = DateTime.UtcNow
+            };
+            
+            _context.Friends.Add(friendship);
+            await _context.SaveChangesAsync();
+            
+            return Ok(new { message = "Arkadaşlık isteği kabul edildi." });
+        }
+        
+        // POST: api/friends/decline-request
+        [HttpPost("api/friends/decline-request")]
+        [Authentication.JwtAuthorize("Registered")]
+        public async Task<IActionResult> ApiDeclineFriendRequest([FromBody] ApiRequestIdModel model)
+        {
+            var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            
+            // Find the request
+            var request = await _context.FriendRequests
+                .FirstOrDefaultAsync(r => r.Id == model.RequestId && r.ReceiverId == currentUserId);
+                
+            if (request == null)
+            {
+                return NotFound(new { message = "İstek bulunamadı." });
+            }
+            
+            // Remove the request instead of just updating its status
+            _context.FriendRequests.Remove(request);
+            await _context.SaveChangesAsync();
+            
+            return Ok(new { message = "Arkadaşlık isteği reddedildi." });
+        }
+        
+        // Models for API requests
+        public class ApiRequestModel
+        {
+            public string Username { get; set; }
+        }
+        
+        public class ApiRequestIdModel
+        {
+            public int RequestId { get; set; }
+        }
     }
 }

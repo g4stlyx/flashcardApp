@@ -190,6 +190,26 @@ namespace flashcardApp.Models
                 .WithMany(fs => fs.Views)
                 .HasForeignKey(sv => sv.SetId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // Column name mappings for Friend
+            modelBuilder.Entity<Friend>()
+                .Property(f => f.UserId1).HasColumnName("user_id1");
+            modelBuilder.Entity<Friend>()
+                .Property(f => f.UserId2).HasColumnName("user_id2");
+            modelBuilder.Entity<Friend>()
+                .Property(f => f.CreatedAt).HasColumnName("created_at");
+
+            // Column name mappings for FriendRequest
+            modelBuilder.Entity<FriendRequest>()
+                .Property(fr => fr.Id).HasColumnName("id");
+            modelBuilder.Entity<FriendRequest>()
+                .Property(fr => fr.SenderId).HasColumnName("sender_id");
+            modelBuilder.Entity<FriendRequest>()
+                .Property(fr => fr.ReceiverId).HasColumnName("receiver_id");
+            modelBuilder.Entity<FriendRequest>()
+                .Property(fr => fr.Status).HasColumnName("status");
+            modelBuilder.Entity<FriendRequest>()
+                .Property(fr => fr.CreatedAt).HasColumnName("created_at");
         }
     }
 }

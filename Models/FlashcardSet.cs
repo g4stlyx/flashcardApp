@@ -26,5 +26,8 @@ namespace flashcardApp.Models
         public ICollection<Tag> Tags { get; set; } = new List<Tag>();
         public ICollection<FavouriteSet> FavouritedBy { get; set; } = new List<FavouriteSet>();
         public ICollection<SetView> Views { get; set; } = new List<SetView>();
+
+        // Computed property to get the number of cards
+        public int CardCount => Flashcards?.Count ?? 0;
     }
 }
