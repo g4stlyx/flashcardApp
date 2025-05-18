@@ -4,8 +4,9 @@
 }
 
 <div class="container mt-4">
-    <h2 class="mb-4">@ViewData["Title"]</h2>    <div class="mb-3">
-        <a href="/FlashcardsView/Friends" class="btn btn-outline-secondary">
+    <h2 class="mb-4">@ViewData["Title"]</h2>    
+    <div class="mb-3">
+        <a href="/FlashcardsView/Friends" class="btn btn-outline-secondary" data-token-handler="true">
             <i class="bi bi-arrow-left"></i> Arkadaşlarıma Dön
         </a>
     </div>
@@ -90,8 +91,8 @@
                             </div>
                         </div>
                         <div class="card-footer d-flex justify-content-between">
-                            <a href="/FlashcardsView/Set/@set.Id" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i> Görüntüle</a>
-                            <a href="/FlashcardsView/Study/@set.Id" class="btn btn-sm btn-success"><i class="bi bi-journal-check"></i> Çalış</a>
+                            <a href="/FlashcardsView/Set/@set.Id" class="btn btn-sm btn-outline-primary" data-token-handler="true"><i class="bi bi-eye"></i> Görüntüle</a>
+                            <a href="/FlashcardsView/Study/@set.Id" class="btn btn-sm btn-success" data-token-handler="true"><i class="bi bi-journal-check"></i> Çalış</a>
                         </div>
                     </div>
                 </div>
@@ -110,6 +111,8 @@
 
 @section Scripts {
     <script src="~/js/jwt-handler.js"></script>
+    <script src="~/js/private-set-handler.js"></script>
+    <script src="~/js/authenticated-links-handler.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Show navigation items for logged in users

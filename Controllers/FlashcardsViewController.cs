@@ -1077,8 +1077,17 @@ namespace flashcardApp.Controllers
 
         // GET: /FlashcardsView/UserSets/{id}
         [Authentication.JwtAuthorize("Registered")]
-        public async Task<IActionResult> UserSets(int id)
+        public async Task<IActionResult> UserSets(int id, string? token = null)
         {
+            Console.WriteLine($"UserSets action called for id: {id}, token provided: {!string.IsNullOrEmpty(token)}");
+            
+            // Process token if provided in query string
+            if (!string.IsNullOrEmpty(token) && !Request.Headers.ContainsKey("Authorization"))
+            {
+                Console.WriteLine("Adding token to Authorization header");
+                Request.Headers.Add("Authorization", $"Bearer {token}");
+            }
+            
             var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
 
             // Verify these users are friends

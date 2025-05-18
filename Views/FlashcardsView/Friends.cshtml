@@ -112,9 +112,9 @@
                                 <div>
                                     <strong>@friend.Username</strong>
                                 </div>
-                            </div>
+                            </div>                            
                             <div>
-                                <a href="/FlashcardsView/UserSets/@friend.Id" class="btn btn-sm btn-info me-2">
+                                <a href="/FlashcardsView/UserSets/@friend.Id" class="btn btn-sm btn-info me-2" data-token-handler="true">
                                     <i class="bi bi-card-list"></i> Setleri Gör
                                 </a>
                                 <form method="post" action="/FlashcardsView/RemoveFriend" class="d-inline">
@@ -138,11 +138,14 @@
 
 @section Scripts {
     <script src="~/js/jwt-handler.js"></script>
+    <script src="~/js/private-set-handler.js"></script>
+    <script src="~/js/authenticated-links-handler.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Show navigation items for logged in users
             document.getElementById('friendsItem').style.display = 'block';
             document.getElementById('friendSetsItem').style.display = 'block';
+            // UserSets links are now handled by authenticated-links-handler.js
             
             // Handle friend request form submission
             const friendRequestForm = document.getElementById('friendRequestForm');
