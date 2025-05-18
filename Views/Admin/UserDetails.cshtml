@@ -1,0 +1,286 @@
+@model flashcardApp.Models.User
+
+@{
+    ViewData["Title"] = "Kullanıcı Detayları - " + Model.Username;
+    Layout = "_Layout";
+    // Helper function to get accepted friend requests
+    IEnumerable<flashcardApp.Models.User> GetFriends(flashcardApp.Models.User user)
+    {
+        var sentAccepted = user.SentFriendRequests
+            .Where(fr => fr.Status == flashcardApp.Models.FriendRequestStatus.Accepted)
+            .Select(fr => fr.Receiver);
+            
+        var receivedAccepted = user.ReceivedFriendRequests
+            .Where(fr => fr.Status == flashcardApp.Models.FriendRequestStatus.Accepted)
+            .Select(fr => fr.Sender);
+            
+        return sentAccepted.Concat(receivedAccepted);
+    }
+    
+    // Calculate user activity statistics
+    var daysSinceRegistration = (DateTime.UtcNow - Model.CreatedAt).TotalDays;
+    var totalSets = Model.FlashcardSets.Count;
+    var totalCards = Model.FlashcardSets.Sum(s => s.Flashcards?.Count ?? 0);
+    var setsPerDay = daysSinceRegistration > 0 ? totalSets / daysSinceRegistration : 0;
+    var cardsPerDay = daysSinceRegistration > 0 ? totalCards / daysSinceRegistration : 0;
+    var friends = GetFriends(Model).ToList();
+    
+    // Last activity calculation (most recent between set creation and user update)
+    var lastSetActivity = Model.FlashcardSets.Any() 
+        ? Model.FlashcardSets.Max(s => s.UpdatedAt > s.CreatedAt ? s.UpdatedAt : s.CreatedAt)
+        : DateTime.MinValue;
+    var lastActivity = Model.UpdatedAt > lastSetActivity ? Model.UpdatedAt : lastSetActivity;
+    var lastActivityDays = (DateTime.UtcNow - lastActivity).TotalDays;
+    var isActiveUser = lastActivityDays < 30; // Active if used in last 30 days
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="javascript:void(0)" onclick="navigateWithToken('/Admin/ManageUsers')">Yönetim Paneli</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Kullanıcı Detayları</li>
+            </ol>
+        </nav>
+        
+        <button class="btn btn-primary" onclick="navigateWithToken('/Admin/ManageUsers')">
+            <i class="bi bi-speedometer2"></i> Dashboard'a Dön
+        </button>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h3 class="card-title mb-0">Kullanıcı Bilgileri</h3>
+                    <span class="badge @(isActiveUser ? "bg-success" : "bg-warning")">
+                        @(isActiveUser ? "Aktif" : "Pasif")
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        @if (!string.IsNullOrEmpty(Model.ProfilePictureUrl))
+                        {
+                            <img src="@Model.ProfilePictureUrl" alt="@Model.Username" class="rounded-circle img-thumbnail" style="width: 150px; height: 150px; object-fit: cover;" />
+                        }
+                        else
+                        {
+                            <div class="bg-secondary rounded-circle d-inline-flex justify-content-center align-items-center text-white" style="width: 150px; height: 150px; font-size: 3rem;">
+                                @Model.Username.Substring(0, 1).ToUpper()
+                            </div>
+                        }
+                    </div>
+                    
+                    <h4 class="text-center">@Model.Username</h4>
+                    
+                    <div class="mt-4">
+                        <p><strong>ID:</strong> @Model.Id</p>
+                        <p><strong>E-posta:</strong> @Model.Email</p>
+                        <p><strong>Ad:</strong> @(Model.FirstName ?? "Belirtilmemiş")</p>
+                        <p><strong>Soyad:</strong> @(Model.LastName ?? "Belirtilmemiş")</p>
+                        <p><strong>Telefon:</strong> @(Model.PhoneNumber ?? "Belirtilmemiş")</p>
+                        <p><strong>Admin:</strong> @(Model.IsAdmin ? "Evet" : "Hayır")</p>
+                        <p><strong>Kayıt Tarihi:</strong> @Model.CreatedAt.ToString("dd.MM.yyyy HH:mm")</p>
+                        <p><strong>Son Güncelleme:</strong> @Model.UpdatedAt.ToString("dd.MM.yyyy HH:mm")</p>
+                        <p>
+                            <strong>Son Aktivite:</strong> 
+                            @if (lastActivity > DateTime.MinValue)
+                            {
+                                @lastActivity.ToString("dd.MM.yyyy HH:mm")
+                                <span class="ms-2 text-muted">(@Math.Round(lastActivityDays) gün önce)</span>
+                            }
+                            else
+                            {
+                                <span>Aktivite yok</span>
+                            }
+                        </p>
+                    </div>
+                      <div class="mt-3">
+                        <button type="button" class="btn btn-danger w-100" 
+                                data-bs-toggle="modal" data-bs-target="#deleteUserModal">
+                            <i class="bi bi-trash"></i> Kullanıcıyı Sil
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- User Activity Card -->
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="card-title mb-0">Aktivite İstatistikleri</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Hesap Yaşı:</strong> @Math.Round(daysSinceRegistration) gün</p>
+                    <p><strong>Toplam Set:</strong> @totalSets</p>
+                    <p><strong>Toplam Flashcard:</strong> @totalCards</p>
+                    <p><strong>Set / Gün:</strong> @Math.Round(setsPerDay, 2)</p>
+                    <p><strong>Kart / Gün:</strong> @Math.Round(cardsPerDay, 2)</p>
+                    <p><strong>Arkadaş Sayısı:</strong> @friends.Count</p>
+                </div>
+            </div>
+            
+            @if (Model.Bio != null)
+            {
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Biyografi</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>@Model.Bio</p>
+                    </div>
+                </div>
+            }
+        </div>
+        
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h3 class="card-title mb-0">Flashcard Setleri</h3>
+                </div>
+                <div class="card-body">
+                    @if (Model.FlashcardSets.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Set Adı</th>
+                                        <th>Görünürlük</th>
+                                        <th>Flashcard Sayısı</th>
+                                        <th>Oluşturulma Tarihi</th>
+                                        <th>Son Güncelleme</th>
+                                        <th>İşlemler</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var set in Model.FlashcardSets.OrderByDescending(s => s.CreatedAt)){
+                                        <tr>
+                                            <td>@set.Id</td>
+                                            <td>
+                                                @set.Title
+                                            </td>
+                                            <td>
+                                                @if (set.Visibility == flashcardApp.Models.Visibility.Private)
+                                                {
+                                                    <span class="badge bg-danger">Özel</span>
+                                                }
+                                                else if (set.Visibility == flashcardApp.Models.Visibility.Friends)
+                                                {
+                                                    <span class="badge bg-warning">Sadece Arkadaşlar</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-success">Herkese Açık</span>
+                                                }
+                                            </td>
+                                            <td>@(set.Flashcards?.Count ?? 0)</td>
+                                            <td>@set.CreatedAt.ToString("dd.MM.yyyy")</td>
+                                            <td>@set.UpdatedAt.ToString("dd.MM.yyyy")</td>
+                                            <td>
+                                                <div class="btn-group">
+                                                    <a href="javascript:void(0)" 
+                                                       onclick="navigateWithToken('/FlashcardsView/Set', { id: @set.Id })" 
+                                                       class="btn btn-sm btn-primary">
+                                                        <i class="bi bi-eye"></i> Görüntüle
+                                                    </a>
+                                                    <a href="javascript:void(0)" 
+                                                       onclick="navigateWithToken('/FlashcardsView/Study', { id: @set.Id })" 
+                                                       class="btn btn-sm btn-success">
+                                                        <i class="bi bi-journal-check"></i> Çalış
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-info">
+                            <p class="mb-0">Bu kullanıcının henüz bir flashcard seti yok.</p>
+                        </div>
+                    }
+                </div>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h3 class="card-title mb-0">Arkadaşlar</h3>
+                </div>
+                <div class="card-body">
+                    @if (friends.Any())
+                    {
+                        <div class="row">
+                            @foreach (var friend in friends)
+                            {
+                                <div class="col-md-6 col-lg-4 mb-3">
+                                    <div class="card h-100">
+                                        <div class="card-body">
+                                            <div class="d-flex align-items-center mb-3">
+                                                @if (!string.IsNullOrEmpty(friend.ProfilePictureUrl))
+                                                {
+                                                    <img src="@friend.ProfilePictureUrl" alt="@friend.Username" class="rounded-circle me-3" 
+                                                         style="width: 50px; height: 50px; object-fit: cover;" />
+                                                }
+                                                else
+                                                {
+                                                    <div class="bg-secondary rounded-circle d-inline-flex justify-content-center align-items-center text-white me-3"
+                                                         style="width: 50px; height: 50px;">
+                                                        @friend.Username.Substring(0, 1).ToUpper()
+                                                    </div>
+                                                }
+                                                <div>
+                                                    <h5 class="card-title mb-0">@friend.Username</h5>
+                                                    @if (friend.IsAdmin)
+                                                    {
+                                                        <span class="badge bg-danger">Admin</span>
+                                                    }
+                                                </div>
+                                            </div>
+                                            <p class="card-text">Set Sayısı: @(friend.FlashcardSets?.Count ?? 0)</p>
+                                            <a href="javascript:void(0)" onclick="navigateWithToken('/Admin/UserDetails', { id: @friend.Id })" class="btn btn-sm btn-primary">
+                                                <i class="bi bi-info-circle"></i> Detayları Gör
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-info">
+                            <p class="mb-0">Bu kullanıcının henüz arkadaşı yok.</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete User Modal -->
+<div class="modal fade" id="deleteUserModal" tabindex="-1" aria-labelledby="deleteUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteUserModalLabel">Kullanıcıyı Sil</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>@Model.Username</strong> kullanıcısını silmek istediğinize emin misiniz?</p>
+                <p class="text-danger">Bu işlem geri alınamaz! Kullanıcıya ait tüm flashcard setleri, kartlar ve arkadaşlık ilişkileri silinecektir.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <form asp-controller="Admin" asp-action="DeleteUser" method="post" class="admin-form">
+                    <input type="hidden" name="userId" value="@Model.Id" />
+                    <button type="submit" class="btn btn-danger">Kullanıcıyı Sil</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

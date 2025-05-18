@@ -58,6 +58,14 @@ namespace flashcardApp.Authentication
             {
                 token = queryToken;
                 System.Console.WriteLine("Found token in query parameter");
+                
+                // For requests that use query token, let's log it and also set a header for downstream middleware
+                if (!string.IsNullOrEmpty(token))
+                {
+                    System.Console.WriteLine($"Setting Auth header from query token for {context.HttpContext.Request.Path}");
+                    // We can't modify headers here, but we can add it to HttpContext.Items
+                    context.HttpContext.Items["JwtFromQuery"] = token;
+                }
             }
 
             // Then check cookies if we didn't find a token yet (last resort since cookies aren't working well)

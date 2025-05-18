@@ -5,10 +5,6 @@ fullstack project. C# .NET, MVC, SSR.
 
 * User Accounts &amp; Profiles, Flashcard Sets, Favourites System, Friends System, Feed ("Flow") Page.
 
-### TODO
-* All the text seen by users will be Turkish.
-* Admin panel to manage tags and users
-
 ### TODO (after the presentation)
 * profile page (password change, some profile edit parts)
 * liking sets functionality, my fav sets page.

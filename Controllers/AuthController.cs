@@ -102,7 +102,6 @@ namespace flashcardApp.Controllers
             {
                 return NotFound("Kullanıcı bulunamadı!");
             }
-            
             return Ok(new
             {
                 id = user.Id,
@@ -114,6 +113,19 @@ namespace flashcardApp.Controllers
                 bio = user.Bio,
                 profilePictureUrl = user.ProfilePictureUrl
             });
+        }
+        
+        [HttpPost("Logout")]
+        public IActionResult Logout()
+        {
+            // Server-side logout logic
+            // For JWT tokens, we don't need to do much server-side as JWTs are stateless
+            // But we can add user activity logging, invalidation of refresh tokens, etc.
+            
+            // Clear any server-side session state if it exists
+            HttpContext.Session.Clear();
+            
+            return Ok(new { message = "Logged out successfully" });
         }
     }
 }

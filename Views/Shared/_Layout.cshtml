@@ -28,15 +28,24 @@
                                 asp-action="Index">Herkese Açık Setler</a>
                         </li>
                         <li class="nav-item" id="mySetsItem" style="display: none;">
-                            <a class="nav-link text-dark" href="/FlashcardsView/MySets">Setlerim</a>
+                            <a class="nav-link text-dark" href="#"
+                                onclick="handleProtectedLink('/FlashcardsView/MySets'); return false;">Setlerim</a>
                         </li>
                         <li class="nav-item" id="friendsItem" style="display: none;">
-                            <a class="nav-link text-dark" href="/FlashcardsView/Friends">Arkadaşlarım</a>
+                            <a class="nav-link text-dark" href="#"
+                                onclick="handleProtectedLink('/FlashcardsView/Friends'); return false;">Arkadaşlarım</a>
                         </li>
                         <li class="nav-item" id="friendSetsItem" style="display: none;">
-                            <a class="nav-link text-dark" href="/FlashcardsView/FriendSets">Arkadaşlarımın Setleri</a>
+                            <a class="nav-link text-dark" href="#"
+                                onclick="handleProtectedLink('/FlashcardsView/FriendSets'); return false;">Arkadaşlarımın
+                                Setleri</a>
                         </li>
-                    </ul>                    
+                        <li class="nav-item" id="adminDashboardItem" style="display: none;">
+                            <a class="nav-link text-dark" href="#" id="adminDashboardLink">
+                                <i class="bi bi-shield-lock"></i> Admin Paneli
+                            </a>
+                        </li>
+                    </ul>
                     <ul class="navbar-nav">
                         <li class="nav-item" id="loginItem">
                             <a class="nav-link text-dark" asp-area="" asp-controller="AuthView"
@@ -60,67 +69,112 @@
     <footer class="border-top footer text-muted">
         <div class="container">
             &copy; 2025 - g4stLy
+
+            <small class="float-end text-muted">
+                <a href="#" onclick="window.debugAuth.checkAuth(); return false;" title="Check Auth Status"
+                    class="text-muted">
+                    <i class="bi bi-bug"></i>
+                </a>
+            </small>
         </div>
     </footer>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="~/js/site.js" asp-append-version="true"></script>    <!-- Auth handling -->
+    <script src="~/js/site.js" asp-append-version="true"></script> <!-- Auth handling -->
+    <!-- JWT Handler with authentication management -->
     <script src="~/js/jwt-handler.js" asp-append-version="true"></script>
     <!-- User ID fix script -->
     <script src="~/js/fix-user-id.js" asp-append-version="true"></script>
+    <!-- Auth refresh handler -->
+    <script src="~/js/refresh-auth.js" asp-append-version="true"></script>
     <!-- Friends functionality -->
     <script src="~/js/friends-handler.js" asp-append-version="true"></script>
-    
+    <!-- Admin panel functionality -->
+    <script src="~/js/admin-handler.js" asp-append-version="true"></script>
     <script>
         $(document).ready(function () {
-            // Check if user is logged in
-            const token = localStorage.getItem('token');
-            const userInfo = window.getUserInfoFromToken();
+            // Debug the authentication state immediately on page load
+            console.log("Page loaded, checking authentication state...");
 
-            if (token && userInfo) {
-                // User is logged in
-                $('#loginItem').addClass('d-none');
-                $('#logoutItem').removeClass('d-none');
-                $('#usernameDisplay').text(userInfo.username);
-                $('#mySetsItem').show();
-                $('#friendsItem').show();
-                $('#friendSetsItem').show();
+            function updateNavbarVisibility() {
+                try {
+                    const token = localStorage.getItem("token");
 
-                // Add admin indicator if user is admin
-                if (userInfo.isAdmin) {
-                    $('#usernameDisplay').after(' <span class="badge bg-danger">Admin</span>');
-                }
+                    if (token) {
+                        console.log("Token found in localStorage");
+                        try {
+                            const userInfo = getUserInfoFromToken(token);
 
-                // Add Authorization header to AJAX requests
-                $.ajaxSetup({
-                    beforeSend: function (xhr) {
-                        xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+                            if (userInfo && userInfo.username) {
+                                // User is authenticated, update navbar
+                                console.log("User authenticated as: " + userInfo.username);
+
+                                // Show user-specific links
+                                $("#mySetsItem").show();
+                                $("#friendsItem").show();
+                                $("#friendSetsItem").show();
+
+                                // Show logout, hide login
+                                $("#loginItem").hide();
+                                $("#logoutItem").removeClass("d-none").show();
+                                $("#usernameDisplay").text(userInfo.username);
+
+                                // Handle admin-specific items
+                                if (userInfo.isAdmin) {
+                                    console.log("User is admin, showing admin links");
+                                    $("#adminDashboardItem").show();
+                                    $("#adminDashboardLink").attr("href", "/Admin/ManageUsers");
+                                } else {
+                                    $("#adminDashboardItem").hide();
+                                }
+                            } else {
+                                console.log("Invalid user info in token");
+                                resetNavbarToLoggedOut();
+                            }
+                        } catch (e) {
+                            console.error("Error processing token:", e);
+                            resetNavbarToLoggedOut();
+                        }
+                    } else {
+                        console.log("No token found, showing logged out state");
+                        resetNavbarToLoggedOut();
                     }
-                });
-            } else {
-                // User is not logged in
-                $('#loginItem').removeClass('d-none');
-                $('#logoutItem').addClass('d-none');
-                $('#mySetsItem').hide();
-                $('#friendsItem').hide();
-                $('#friendSetsItem').hide();
-            }            // Handle logout
-            $('#logoutLink').click(function (e) {
+                } catch (error) {
+                    console.error("Error in updateNavbarVisibility:", error);
+                    resetNavbarToLoggedOut();
+                }
+            }
+
+            function resetNavbarToLoggedOut() {
+                // Hide authenticated-only items
+                $("#mySetsItem, #friendsItem, #friendSetsItem, #adminDashboardItem").hide();
+
+                // Show login, hide logout
+                $("#loginItem").show();
+                $("#logoutItem").addClass("d-none").hide();
+            }
+
+            // Initialize navbar on page load
+            updateNavbarVisibility();
+
+            // Handle logout action
+            $("#logoutLink").on("click", function (e) {
                 e.preventDefault();
-                // Clear all auth-related localStorage items
-                localStorage.removeItem('token');
-                localStorage.removeItem('jwtBackup');
-                localStorage.removeItem('userId');
-                localStorage.removeItem('lastAuthPath');
-                localStorage.removeItem('authInProgress');
-                
-                // Clear all auth-related cookies
-                document.cookie = 'jwt=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-                document.cookie = 'user_id=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-                
-                console.log("All authentication data cleared");
-                window.location.href = '/AuthView/Login';
+                localStorage.removeItem("token");
+                sessionStorage.removeItem("userInfo");
+                resetNavbarToLoggedOut();
+                window.location.href = "/AuthView/Login";
             });
+
+            // Update navbar visibility whenever localStorage changes (in other tabs)
+            window.addEventListener("storage", function (e) {
+                if (e.key === "token") {
+                    updateNavbarVisibility();
+                }
+            });
+
+            // Check authentication state periodically
+            setInterval(updateNavbarVisibility, 60000); // Check every minute
         });
     </script>
 

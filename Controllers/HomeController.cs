@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using flashcardApp.Models;
 
@@ -19,68 +20,15 @@ public class HomeController : Controller
 
     public IActionResult Index()
     {
-        return View();
-    }
-
-    public IActionResult Privacy()
-    {
-        return View();
-    }
-
-    public IActionResult Users()
-    {
-        return View();
-    }
-
-    public IActionResult TestDatabase()
-    {
-        try
+        // Check if user is logged in and is admin
+        if (User.Identity.IsAuthenticated)
         {
-            var userCount = _context.Users.Count();
-            ViewBag.Message = $"Database connection successful! Found {userCount} users.";
-            ViewBag.Success = true;
-        }
-        catch (Exception ex)
-        {
-            ViewBag.Message = $"Error connecting to database: {ex.Message}";
-            ViewBag.Success = false;
-            ViewBag.Error = ex.ToString();
+            bool isAdmin = User.HasClaim(c => c.Type == "UserType" && c.Value == "Admin") ||
+                          User.HasClaim(c => c.Type == ClaimTypes.Role && c.Value == "Admin");
+                          
+            ViewData["IsAdmin"] = isAdmin;
         }
         
-        return View();
-    }
-
-    public IActionResult DatabaseInfo()
-    {
-        ViewBag.ConnectionInfo = new
-        {
-            Server = DotNetEnv.Env.GetString("DB_SERVER"),
-            Database = DotNetEnv.Env.GetString("DB_NAME"),
-            User = DotNetEnv.Env.GetString("DB_USER"),
-            Port = DotNetEnv.Env.GetString("DB_PORT")
-        };
-        
-        try
-        {
-            ViewBag.UserCount = _context.Users.Count();
-            ViewBag.Success = true;
-        }
-        catch (Exception ex)
-        {
-            ViewBag.Success = false;
-            ViewBag.Error = ex.Message;
-        }
-        
-        return View();
-    }
-
-    public IActionResult AuthDebug()
-    {
-        return View();
-    }
-
-    public IActionResult UserSetsDebug()
-    {
         return View();
     }
 

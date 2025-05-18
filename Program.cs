@@ -154,6 +154,40 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+// Custom middleware to ensure token from query string is available to auth middleware //! added later
+app.Use(async (context, next) =>
+{
+    // Check if there's a token in the query string
+    if (context.Request.Query.TryGetValue("token", out var tokenValue) && !string.IsNullOrEmpty(tokenValue))
+    {
+        var token = tokenValue.ToString();
+        Console.WriteLine($"Middleware: Found token in query string for {context.Request.Path}");
+        
+        // If there's no Authorization header yet, add one with the token
+        if (!context.Request.Headers.ContainsKey("Authorization"))
+        {
+            context.Request.Headers.Append("Authorization", $"Bearer {token}");
+            Console.WriteLine("Middleware: Added Authorization header from query token");
+        }
+    }
+    
+    // Check if there's a manually added token in HttpContext.Items from JwtAuthorizeAttribute
+    if (context.Items.TryGetValue("ManualToken", out var manualToken) && manualToken is string tokenStr)
+    {
+        Console.WriteLine($"Middleware: Found manual token in HttpContext.Items for {context.Request.Path}");
+        
+        // Set or replace the Authorization header
+        if (context.Request.Headers.ContainsKey("Authorization"))
+        {
+            context.Request.Headers.Remove("Authorization");
+        }
+        context.Request.Headers.Append("Authorization", $"Bearer {tokenStr}");
+        Console.WriteLine("Middleware: Added/updated Authorization header from manual token");
+    }
+    
+    await next();
+});
+
 // Enable authentication and authorization
 app.UseAuthentication();
 app.UseAuthorization();
