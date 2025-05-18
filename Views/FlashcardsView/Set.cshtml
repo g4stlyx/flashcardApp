@@ -33,10 +33,6 @@
                     </div>
                     <div class="d-grid gap-2">
                         <a asp-action="Study" asp-route-id="@Model.Id" class="btn btn-success">Seti Çalış</a>
-                        @if (User.Identity.IsAuthenticated && int.TryParse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out int userId) && userId == Model.UserId)
-                        {
-                            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-primary">Seti düzenle</a>
-                        }
                         <a id="editSetButton" style="display: none;" href="/FlashcardsView/Edit/@Model.Id" class="btn btn-outline-primary">Seti düzenle</a>
                     </div>
                 </div>
@@ -68,15 +64,11 @@
                     </div>
                 }
             </div>
-
             @if (!Model.Flashcards.Any())
             {
                 <div class="alert alert-info">
                     Bu set henüz hiç kart içermiyor.
-                    @if (User.Identity.IsAuthenticated && int.TryParse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out int currentUserId) && currentUserId == Model.UserId)
-                    {
-                        <a asp-action="Edit" asp-route-id="@Model.Id">Hemen Ekle!</a>
-                    }
+                    <a id="emptySetEditButton" style="display: none;" href="/FlashcardsView/Edit/@Model.Id">Hemen Ekle!</a>
                 </div>
             }
         </div>
@@ -85,7 +77,36 @@
 
 @section Scripts {
     <script src="~/js/set-page-handler.js"></script>
+    <script src="~/js/admin-handler.js"></script>
     <script>
+        // Local implementation of navigateWithToken in case admin-handler.js isn't loaded
+        function localNavigateWithToken(url, params = {}) {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                console.error("No token available for navigation");
+                return;
+            }
+            
+            // Build the URL with parameters
+            let finalUrl = url;
+            const queryParams = new URLSearchParams();
+            
+            // Add token
+            queryParams.append('token', token);
+            
+            // Add other params
+            for (const [key, value] of Object.entries(params)) {
+                queryParams.append(key, value);
+            }
+            
+            // Append query string to URL
+            finalUrl += '?' + queryParams.toString();
+            
+            // Navigate
+            console.log(`Navigating to: ${finalUrl}`);
+            window.location.href = finalUrl;
+        }
+        
         document.addEventListener('DOMContentLoaded', function() {
             // Get token from localStorage
             const token = localStorage.getItem('token');
@@ -105,15 +126,38 @@
                 const isAdmin = tokenPayload.role === "Admin" || 
                                 tokenPayload["UserType"] === "Admin" ||
                                 (tokenPayload.role && Array.isArray(tokenPayload.role) && tokenPayload.role.includes("Admin"));
-                  // Show edit buttons if user is the owner or admin
+                                              
+                // Show edit button only if user is the owner or admin
                 if (userIdFromToken === setOwnerId || isAdmin) {
-                    document.getElementById('editSetButton').style.display = 'block';
+                    console.log('User can edit this set - showing edit buttons');
                     
-                    // Also show the edit button in the empty flashcards message if it exists
+                    // Main edit button
+                    const editSetButton = document.getElementById('editSetButton');
+                    if (editSetButton) {
+                        editSetButton.style.display = 'block';
+                    }
+                    
+                    // Empty set edit button
                     const emptySetEditButton = document.getElementById('emptySetEditButton');
                     if (emptySetEditButton) {
                         emptySetEditButton.style.display = 'inline-block';
                     }
+                    
+                    // Make sure the edit buttons include token when clicked
+                    document.querySelectorAll('#editSetButton, #emptySetEditButton').forEach(button => {
+                        button.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            
+                            // Navigate with token to ensure authentication works
+                            const href = this.getAttribute('href');                            
+                            if (typeof navigateWithToken === 'function') {
+                                navigateWithToken(href);
+                            } else {
+                                // Use our local implementation
+                                localNavigateWithToken(href);
+                            }
+                        });
+                    });
                 }
             } catch (err) {
                 console.error('Error checking set ownership:', err);
