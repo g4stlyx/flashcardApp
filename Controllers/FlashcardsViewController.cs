@@ -361,11 +361,23 @@ namespace flashcardApp.Controllers
                 // For private sets, check if user is authenticated and is the owner or an admin
                 if (!User.Identity.IsAuthenticated)
                 {
+                    // Extract token from query string if available and try to authenticate
+                    if (Request.Query.TryGetValue("token", out var token))
+                    {
+                        Console.WriteLine("Found token in query for private set, trying to use it");
+                        return await Set(id, token.ToString());
+                    }
                     return RedirectToAction("Login", "AuthView");
                 }
 
                 var userIdFromClaim = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
-                bool isAdmin = User.HasClaim(c => c.Type == "UserType" && c.Value == "Admin");
+                
+                // Check for admin status in multiple ways to ensure consistent recognition
+                bool isAdmin = User.HasClaim(c => c.Type == "UserType" && c.Value == "Admin") || 
+                              User.HasClaim(c => c.Type == ClaimTypes.Role && c.Value == "Admin") ||
+                              User.IsInRole("Admin");
+                
+                Console.WriteLine($"Private set access: UserId={userIdFromClaim}, SetOwner={set.UserId}, IsAdmin={isAdmin}");
 
                 // Allow access if user is the owner or an admin
                 if (set.UserId != userIdFromClaim && !isAdmin)
@@ -444,9 +456,12 @@ namespace flashcardApp.Controllers
 
                 var userIdFromToken = int.Parse(userIdClaim.Value);
 
-                // Check if the user is an admin
+                // Check if the user is an admin through multiple possible claim locations
                 var userTypeClaim = jsonTokenObj.Claims.FirstOrDefault(c => c.Type == "UserType");
-                bool isAdmin = userTypeClaim != null && userTypeClaim.Value == "Admin";
+                var roleClaim = jsonTokenObj.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role);
+                
+                bool isAdmin = (userTypeClaim != null && userTypeClaim.Value == "Admin") ||
+                               (roleClaim != null && roleClaim.Value == "Admin");
 
                 // Allow access if user is the owner or an admin
                 if (set.UserId != userIdFromToken && !isAdmin)
@@ -689,12 +704,21 @@ namespace flashcardApp.Controllers
                 return NotFound();
             }
 
-            // Check if user is the owner
-            if (set.UserId != userId)
+            // Check if user is the owner or an admin
+            bool isAdmin = User.HasClaim(c => c.Type == "UserType" && c.Value == "Admin") || 
+                          User.HasClaim(c => c.Type == ClaimTypes.Role && c.Value == "Admin") ||
+                          User.IsInRole("Admin");
+
+            // Log the authorization check
+            Console.WriteLine($"Edit authorization check: UserId={userId}, SetOwner={set.UserId}, IsAdmin={isAdmin}");
+            
+            if (set.UserId != userId && !isAdmin)
             {
+                Console.WriteLine("Access denied: User is not the owner or admin");
                 return Forbid();
             }
 
+            Console.WriteLine("Access granted to edit set");
             return View(set);
         }
 
@@ -733,7 +757,7 @@ namespace flashcardApp.Controllers
 
             var userId = int.Parse(userIdClaim.Value);
 
-            // Check if the set exists and the user is the owner
+            // Check if the set exists and the user is the owner or an admin
             var set = await _context.FlashcardSets
                 .Include(s => s.Flashcards)
                 .Include(s => s.Tags)
@@ -744,11 +768,22 @@ namespace flashcardApp.Controllers
                 return NotFound();
             }
 
-            if (set.UserId != userId)
+            // Check if user is an admin (from token claims)
+            var userTypeClaim = jsonToken.Claims.FirstOrDefault(c => c.Type == "UserType");
+            var roleClaim = jsonToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role);
+            
+            bool isAdmin = (userTypeClaim != null && userTypeClaim.Value == "Admin") ||
+                          (roleClaim != null && roleClaim.Value == "Admin");
+                          
+            Console.WriteLine($"EditPost authorization check: UserId={userId}, SetOwner={set.UserId}, IsAdmin={isAdmin}");
+            
+            if (set.UserId != userId && !isAdmin)
             {
+                Console.WriteLine("Access denied: User is not the owner or admin");
                 return Forbid();
             }
 
+            Console.WriteLine("Access granted to edit set");
             return View(set);
         }
 

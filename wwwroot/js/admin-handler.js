@@ -191,6 +191,45 @@ function addTokenToEditLinks() {
             navigateWithToken(href);
         });
     });
+    
+    // Also handle Set view links for admins accessing private sets
+    document.querySelectorAll('a[href^="/FlashcardsView/Set/"]').forEach(link => {
+        // Skip if already handled by other scripts
+        if (link.hasAttribute('data-token-handler')) {
+            return;
+        }
+        
+    // Setup AJAX Authorization header for admins
+    setupAjaxAuthForAdmins();
+        
+        // Check if user is admin
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+            
+            const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+            const isAdmin = tokenPayload.role === "Admin" || 
+                    tokenPayload["UserType"] === "Admin" ||
+                    (tokenPayload.role && Array.isArray(tokenPayload.role) && tokenPayload.role.includes("Admin"));
+                    
+            if (isAdmin) {
+                // Mark as handled
+                link.setAttribute('data-token-handler', 'true');
+                
+                // Store original href
+                const originalHref = link.getAttribute('href');
+                
+                // Replace with click handler for admins
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    console.log(`Admin accessing set link: ${originalHref}`);
+                    navigateWithToken(originalHref);
+                });
+            }
+        } catch (err) {
+            console.error("Error processing admin access for set link:", err);
+        }
+    });
 }
 
 // Run when the DOM is ready
@@ -255,6 +294,48 @@ document.addEventListener('DOMContentLoaded', function() {
     `;
     document.head.appendChild(style);
 });
+
+// Setup AJAX Authentication header for admin users
+function setupAjaxAuthForAdmins() {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    
+    // Check if user is admin
+    try {
+        const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+        const isAdmin = tokenPayload.role === "Admin" || 
+                tokenPayload["UserType"] === "Admin" ||
+                (tokenPayload.role && Array.isArray(tokenPayload.role) && tokenPayload.role.includes("Admin"));
+        
+        if (isAdmin) {
+            console.log("Admin detected: Setting up global AJAX auth headers");
+            
+            // Set up global AJAX authorization header for admin users
+            if (typeof $ !== 'undefined' && $.ajaxSetup) {
+                $.ajaxSetup({
+                    beforeSend: function(xhr) {
+                        // Add Authorization header to AJAX requests
+                        xhr.setRequestHeader("Authorization", "Bearer " + token);
+                    }
+                });
+            }
+            
+            // Also attach token to any forms that may be used for editing
+            document.querySelectorAll('form').forEach(form => {
+                if (!form.querySelector('input[name="jwt"]')) {
+                    const tokenInput = document.createElement('input');
+                    tokenInput.type = 'hidden';
+                    tokenInput.name = 'jwt';
+                    tokenInput.value = token;
+                    form.appendChild(tokenInput);
+                    console.log("Added JWT token to form:", form);
+                }
+            });
+        }
+    } catch (err) {
+        console.error("Error setting up admin AJAX auth:", err);
+    }
+}
 
 // Document-level event delegation for edit links to handle dynamically added elements
 document.addEventListener('click', function(e) {
