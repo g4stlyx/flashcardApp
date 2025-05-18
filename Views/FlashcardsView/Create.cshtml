@@ -98,8 +98,13 @@
                         'Authorization': 'Bearer ' + token
                     },
                     success: function(response) {
-                        // Redirect to edit page to add flashcards
-                        window.location.href = '/FlashcardsView/Edit/' + response.id;
+                        // Redirect to edit page with token to add flashcards
+                        if (typeof navigateWithToken === 'function') {
+                            navigateWithToken('/FlashcardsView/Edit/' + response.id);
+                        } else {
+                            // Fallback: append token as query parameter
+                            window.location.href = '/FlashcardsView/Edit/' + response.id + '?token=' + encodeURIComponent(token);
+                        }
                     },
                     error: function(xhr, status, error) {
                         console.error('Error status:', status);
@@ -147,8 +152,9 @@
                         } catch (e) {}
                         alert('Kullanıcı doğrulaması başarısız. Lütfen oturum açın veya token\'ı kontrol edin.');
                     }
-                });
+                    });
             });
         });
     </script>
+    <script src="~/js/create-page-handler.js"></script>
 }

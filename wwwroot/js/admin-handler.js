@@ -172,8 +172,9 @@ function highlightSearchTerms() {
     }
 }
 
-// Add this to ensure Edit links always have the token
+// Add this to ensure Edit and Create links always have the token
 function addTokenToEditLinks() {
+    // Handle Edit links
     document.querySelectorAll('a[href^="/FlashcardsView/Edit/"]').forEach(link => {
         // Skip if already handled
         if (link.hasAttribute('data-token-handler')) {
@@ -188,6 +189,25 @@ function addTokenToEditLinks() {
             e.preventDefault();
             const href = link.getAttribute('href');
             console.log(`Edit link clicked, navigating to ${href} with token`);
+            navigateWithToken(href);
+        });
+    });
+    
+    // Handle Create links
+    document.querySelectorAll('a[href^="/FlashcardsView/Create"]').forEach(link => {
+        // Skip if already handled
+        if (link.hasAttribute('data-token-handler')) {
+            return;
+        }
+        
+        // Mark as handled
+        link.setAttribute('data-token-handler', 'true');
+        
+        // Replace with click handler
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const href = link.getAttribute('href');
+            console.log(`Create link clicked, navigating to ${href} with token`);
             navigateWithToken(href);
         });
     });
@@ -236,6 +256,7 @@ function addTokenToEditLinks() {
 document.addEventListener('DOMContentLoaded', function() {
     setupAdminLinks();
     addTokenToEditLinks();
+    setupAjaxAuthForAdmins(); // Add this to ensure all pages have proper token handling
 });
 
 // Also run after each AJAX request that could modify the page content
@@ -300,44 +321,63 @@ function setupAjaxAuthForAdmins() {
     const token = localStorage.getItem('token');
     if (!token) return;
     
-    // Check if user is admin
+    console.log("Setting up global AJAX auth headers for authenticated user");
+    
+    // Set up global AJAX authorization header for all authenticated users
+    if (typeof $ !== 'undefined' && $.ajaxSetup) {
+        $.ajaxSetup({
+            beforeSend: function(xhr) {
+                // Add Authorization header to AJAX requests
+                xhr.setRequestHeader("Authorization", "Bearer " + token);
+            }
+        });
+    }
+    
+    // Also attach token to any forms that may be used for editing or creating
+    document.querySelectorAll('form').forEach(form => {
+        // Skip forms already processed
+        if (form.hasAttribute('data-token-added')) {
+            return;
+        }
+        
+        form.setAttribute('data-token-added', 'true');
+        
+        if (!form.querySelector('input[name="jwt"]')) {
+            const tokenInput = document.createElement('input');
+            tokenInput.type = 'hidden';
+            tokenInput.name = 'jwt';
+            tokenInput.value = token;
+            form.appendChild(tokenInput);
+            console.log("Added JWT token to form:", form);
+        }
+        
+        if (!form.querySelector('input[name="token"]')) {
+            const tokenInput = document.createElement('input');
+            tokenInput.type = 'hidden';
+            tokenInput.name = 'token';
+            tokenInput.value = token;
+            form.appendChild(tokenInput);
+            console.log("Added token input to form:", form);
+        }
+    });
+    
     try {
+        // Check if user is admin for admin-specific features
         const tokenPayload = JSON.parse(atob(token.split('.')[1]));
         const isAdmin = tokenPayload.role === "Admin" || 
                 tokenPayload["UserType"] === "Admin" ||
                 (tokenPayload.role && Array.isArray(tokenPayload.role) && tokenPayload.role.includes("Admin"));
         
         if (isAdmin) {
-            console.log("Admin detected: Setting up global AJAX auth headers");
-            
-            // Set up global AJAX authorization header for admin users
-            if (typeof $ !== 'undefined' && $.ajaxSetup) {
-                $.ajaxSetup({
-                    beforeSend: function(xhr) {
-                        // Add Authorization header to AJAX requests
-                        xhr.setRequestHeader("Authorization", "Bearer " + token);
-                    }
-                });
-            }
-            
-            // Also attach token to any forms that may be used for editing
-            document.querySelectorAll('form').forEach(form => {
-                if (!form.querySelector('input[name="jwt"]')) {
-                    const tokenInput = document.createElement('input');
-                    tokenInput.type = 'hidden';
-                    tokenInput.name = 'jwt';
-                    tokenInput.value = token;
-                    form.appendChild(tokenInput);
-                    console.log("Added JWT token to form:", form);
-                }
-            });
+            console.log("Admin user detected, enabling admin-specific features");
+            // Admin-specific features could be added here
         }
     } catch (err) {
-        console.error("Error setting up admin AJAX auth:", err);
+        console.error("Error checking admin status:", err);
     }
 }
 
-// Document-level event delegation for edit links to handle dynamically added elements
+// Document-level event delegation for edit and create links to handle dynamically added elements
 document.addEventListener('click', function(e) {
     // Check if the click was on an edit link or inside one
     const editLink = e.target.closest('a[href^="/FlashcardsView/Edit/"]');
@@ -347,6 +387,17 @@ document.addEventListener('click', function(e) {
         e.preventDefault();
         const href = editLink.getAttribute('href');
         console.log(`Caught click on unhandled edit link: ${href}`);
+        navigateWithToken(href);
+    }
+    
+    // Check if the click was on a create link or inside one
+    const createLink = e.target.closest('a[href^="/FlashcardsView/Create"]');
+    
+    if (createLink && !createLink.hasAttribute('data-token-handler')) {
+        // If this link hasn't been handled by our specific handlers
+        e.preventDefault();
+        const href = createLink.getAttribute('href');
+        console.log(`Caught click on unhandled create link: ${href}`);
         navigateWithToken(href);
     }
 });

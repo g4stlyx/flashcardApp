@@ -18,7 +18,7 @@
                         <i class="bi bi-card-heading" style="font-size: 3rem;"></i>
                     </div>
                 }
-                <div class="card-body">
+                <div class="card-body" data-set-owner-id="@Model.UserId">
                     <h2 class="card-title">@Model.Title</h2>
                     <p class="card-text">@Model.Description</p>
                     <div class="mb-3">
@@ -78,6 +78,7 @@
 @section Scripts {
     <script src="~/js/set-page-handler.js"></script>
     <script src="~/js/admin-handler.js"></script>
+    <script src="~/js/delete-set-handler.js"></script>
     <script>
         // Local implementation of navigateWithToken in case admin-handler.js isn't loaded
         function localNavigateWithToken(url, params = {}) {

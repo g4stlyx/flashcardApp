@@ -70,6 +70,38 @@ function setupPrivateSetHandlers() {
             }
         });
     });
+
+    // Handle Create links too
+    document.querySelectorAll('a[href^="/FlashcardsView/Create"]').forEach(link => {
+        // Skip links already handled by other scripts
+        if (link.hasAttribute('data-token-handler') || link.classList.contains('create-set-btn')) {
+            return;
+        }
+
+        // Mark as handled to avoid duplicate handlers
+        link.setAttribute('data-token-handler', 'true');
+        
+        // Save the original href
+        const originalHref = link.href;
+        
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const token = localStorage.getItem('token');
+            if (token) {
+                // If we have a token, use navigateWithToken if available
+                if (typeof navigateWithToken === 'function') {
+                    navigateWithToken(originalHref);
+                } else {
+                    // Fallback: append token as query parameter
+                    window.location.href = `${originalHref}?token=${encodeURIComponent(token)}`;
+                }
+            } else {
+                // If no token, just go to the regular URL
+                window.location.href = originalHref;
+            }
+        });
+    });
 }
 
 // Make the function globally available
