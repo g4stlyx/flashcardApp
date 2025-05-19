@@ -1,48 +1,108 @@
 @{
-    ViewData["Title"] = "Set oluştur";
+    ViewData["Title"] = "Yeni Set Oluştur";
 }
 
 <div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Yeni Set Oluştur</h1>
+        <a asp-action="Index" class="btn btn-outline-primary-modern">
+            <i class="bi bi-arrow-left me-2"></i>Setlere Dön
+        </a>
+    </div>
+
     <div class="row">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0">Set oluştur</h4>
-                </div>
-                <div class="card-body">
-                    <form id="createSetForm">
-                        <div class="row mb-3">
+        <div class="col-lg-8 mx-auto">
+            <div class="card-modern p-0">
+                <div class="card-body p-4">
+                    <form id="createSetForm" class="form-modern">
+                        <!-- Progress steps -->
+                        <div class="mb-4">
+                            <div class="position-relative mb-4">
+                                <div class="progress" style="height: 3px;">
+                                    <div class="progress-bar" role="progressbar" style="width: 100%;" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-4">
                             <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="title" class="form-label">Başlık</label>
-                                    <input type="text" class="form-control" id="title" name="title" required>
+                                <div class="form-floating mb-3">
+                                    <input type="text" class="form-control" id="title" name="title" placeholder="Set Başlığı" required>
+                                    <label for="title">Set Başlığı</label>
                                 </div>
                                 
-                                <div class="mb-3">
-                                    <label for="description" class="form-label">Açıklama</label>
-                                    <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                                <div class="form-floating mb-3">
+                                    <textarea class="form-control" id="description" name="description" style="height: 120px;" placeholder="Açıklama"></textarea>
+                                    <label for="description">Açıklama</label>
                                 </div>
                                 
-                                <div class="mb-3">
-                                    <label for="visibility" class="form-label">Görünürlük</label>
-                                    <select class="form-select" id="visibility" name="visibility">
+                                <div class="mb-4">
+                                    <label class="form-label">Görünürlük</label>
+                                    <div class="d-flex flex-wrap gap-3">
+                                        <div class="form-check visibility-option">
+                                            <input class="form-check-input" type="radio" name="visibilityRadio" id="visibilityPublic" value="0" checked>
+                                            <label class="form-check-label p-3 rounded-3 border d-flex flex-column align-items-center" for="visibilityPublic">
+                                                <i class="bi bi-globe fs-3 mb-2 text-primary"></i>
+                                                <span>Herkese Açık</span>
+                                                <small class="text-muted">Herkes görebilir</small>
+                                            </label>
+                                        </div>
+                                        <div class="form-check visibility-option">
+                                            <input class="form-check-input" type="radio" name="visibilityRadio" id="visibilityFriends" value="1">
+                                            <label class="form-check-label p-3 rounded-3 border d-flex flex-column align-items-center" for="visibilityFriends">
+                                                <i class="bi bi-people fs-3 mb-2 text-info"></i>
+                                                <span>Arkadaşlar</span>
+                                                <small class="text-muted">Sadece arkadaşların</small>
+                                            </label>
+                                        </div>
+                                        <div class="form-check visibility-option">
+                                            <input class="form-check-input" type="radio" name="visibilityRadio" id="visibilityPrivate" value="2">
+                                            <label class="form-check-label p-3 rounded-3 border d-flex flex-column align-items-center" for="visibilityPrivate">
+                                                <i class="bi bi-lock fs-3 mb-2 text-secondary"></i>
+                                                <span>Özel</span>
+                                                <small class="text-muted">Sadece sen</small>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <select class="form-select d-none" id="visibility" name="visibility">
                                         <option value="0">Herkese Açık</option>
                                         <option value="1">Sadece arkadaşlarım</option>
                                         <option value="2">Özel (Sadece ben)</option>
                                     </select>
                                 </div>
-                                
-                                <div class="mb-3">
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="mb-4">
                                     <label for="coverImageUrl" class="form-label">Kapak Fotoğrafı URL (İsteğe Bağlı)</label>
-                                    <input type="url" class="form-control" id="coverImageUrl" name="coverImageUrl">
+                                    <div class="input-group mb-3">
+                                        <span class="input-group-text"><i class="bi bi-image"></i></span>
+                                        <input type="url" class="form-control" id="coverImageUrl" name="coverImageUrl" placeholder="https://example.com/image.jpg">
+                                    </div>
+                                </div>
+                                
+                                <div class="cover-image-preview text-center p-3 mb-3 rounded-3 border">
+                                    <div id="coverPreviewPlaceholder">
+                                        <i class="bi bi-card-image text-muted" style="font-size: 4rem;"></i>
+                                        <p class="text-muted mt-2">Kapak fotoğrafı önizlemesi</p>
+                                    </div>
+                                    <img id="coverPreviewImage" class="img-fluid rounded d-none" alt="Kapak önizleme">
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                            <button type="button" id="testAuthBtn" class="btn btn-secondary me-2">Test Auth</button>
-                            <button type="submit" class="btn btn-primary">Set Oluştur</button>
-                            <a asp-action="Index" class="btn btn-outline-secondary">İptal Et</a>
+                        <hr class="my-4">
+                        
+                        <div class="d-flex justify-content-between">
+                            <button type="button" class="btn btn-outline-secondary" id="testAuthBtn">
+                                <i class="bi bi-shield-check me-2"></i>Auth Test
+                            </button>
+                            <div>
+                                <a asp-action="Index" class="btn btn-outline-secondary me-2">İptal Et</a>
+                                <button type="submit" class="btn btn-primary-modern">
+                                    <i class="bi bi-plus-circle me-2"></i>Set Oluştur
+                                </button>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -52,6 +112,8 @@
 </div>
 
 @section Scripts {
+    <!-- Add modern form handler -->
+    <script src="~/js/modern-form-handler.js"></script>
     <script>
         $(document).ready(function() {
             $('#createSetForm').submit(function(e) {

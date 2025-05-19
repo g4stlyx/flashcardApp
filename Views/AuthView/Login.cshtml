@@ -4,29 +4,65 @@
 }
 
 <div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0">Giriş Yap</h4>
-                </div>
-                <div class="card-body">
-                    <div id="loginResult" class="alert" style="display:none;"></div>
-                    <form id="loginForm" method="post">
-                        <div class="mb-3">
-                            <label for="username" class="form-label">Kullanıcı Adı</label>
-                            <input type="text" class="form-control" id="username" name="username" required>
+    <div class="row justify-content-center align-items-center" style="min-height: 70vh;">
+        <div class="col-lg-5">
+            <div class="text-center mb-5 d-none d-lg-block">
+                <i class="bi bi-card-heading text-gradient" style="font-size: 4rem;"></i>
+                <h1 class="mt-3">Flashcard App</h1>
+                <p class="text-muted">Flashcard'larla öğrenmeyi daha kolay ve eğlenceli hale getirin.</p>
+            </div>
+            
+            <div class="card-modern shadow-hover">
+                <div class="card-body p-4">
+                    <div class="text-center mb-4">
+                        <h2 class="mb-1">Hoş Geldiniz</h2>
+                        <p class="text-muted">Hesabınıza giriş yapın</p>
+                    </div>
+                    
+                    <div id="loginResult" class="alert rounded-xl" style="display:none;"></div>
+                    
+                    <form id="loginForm" method="post" class="form-modern">
+                        <div class="mb-4">
+                            <div class="form-floating">
+                                <input type="text" class="form-control" id="username" name="username" placeholder="Kullanıcı Adı" required>
+                                <label for="username">
+                                    <i class="bi bi-person me-2"></i>Kullanıcı Adı
+                                </label>
+                            </div>
                         </div>
-                        <div class="mb-3">
-                            <label for="password" class="form-label">Şifre</label>
-                            <input type="password" class="form-control" id="password" name="password" required>
+                        
+                        <div class="mb-4">
+                            <div class="form-floating">
+                                <input type="password" class="form-control" id="password" name="password" placeholder="Şifre" required>
+                                <label for="password">
+                                    <i class="bi bi-lock me-2"></i>Şifre
+                                </label>
+                            </div>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" id="showPasswordCheck">
+                                <label class="form-check-label" for="showPasswordCheck">
+                                    Şifreyi göster
+                                </label>
+                            </div>
                         </div>
-                        <div class="d-flex justify-content-between">
-                            <button type="submit" class="btn btn-primary">Giriş Yap</button>
-                            <a asp-controller="AuthView" asp-action="Register" class="btn btn-outline-secondary">Kayıt ol</a>
+                        
+                        <div class="d-grid gap-2 mb-4">
+                            <button type="submit" class="btn btn-primary-modern py-2">
+                                <i class="bi bi-box-arrow-in-right me-2"></i>Giriş Yap
+                            </button>
+                        </div>
+                        
+                        <div class="text-center">
+                            <p>Hesabınız yok mu? <a asp-controller="AuthView" asp-action="Register" class="text-primary">Kayıt Olun</a></p>
                         </div>
                     </form>
                 </div>
+            </div>
+            
+            <div class="text-center mt-4">
+                <a href="/" class="text-muted">
+                    <i class="bi bi-house-door me-1"></i>Ana Sayfaya Dön
+                </a>
             </div>
         </div>
     </div>
@@ -35,8 +71,27 @@
 @section Scripts {
     <script>
         $(document).ready(function() {
+            // Focus username field on page load
+            $('#username').focus();
+            
+            // Show/hide password functionality
+            $('#showPasswordCheck').on('change', function() {
+                const passwordField = $('#password');
+                if ($(this).is(':checked')) {
+                    passwordField.attr('type', 'text');
+                } else {
+                    passwordField.attr('type', 'password');
+                }
+            });
+            
+            // Form submission with animation
             $('#loginForm').submit(function(e) {
                 e.preventDefault();
+                
+                // Disable the submit button and show loading state
+                const submitBtn = $(this).find('button[type="submit"]');
+                const originalBtnText = submitBtn.html();
+                submitBtn.html('<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Giriş yapılıyor...').prop('disabled', true);
                 
                 var loginData = {
                     username: $('#username').val(),
@@ -56,31 +111,37 @@
                             // Show success message
                             $('#loginResult')
                                 .removeClass('alert-danger')
-                                .addClass('alert-success')
-                                .text('Giriş Başarılı! Yönlendiriliyor...')
+                                .addClass('alert-success fade-in')
+                                .html('<i class="bi bi-check-circle me-2"></i>Giriş Başarılı! Yönlendiriliyor...')
                                 .show();
                                 
-                            // Redirect to home page after 1 second
+                            // Redirect to home page after a short delay
                             setTimeout(function() {
                                 window.location.href = '/';
                             }, 1000);
                         } else {
-                            $('#loginResult')
-                                .removeClass('alert-success')
-                                .addClass('alert-danger')
-                                .text(response.message)
-                                .show();
+                            showErrorMessage(response.message);
+                            resetSubmitButton();
                         }
                     },
                     error: function(xhr) {
                         var response = xhr.responseJSON;
-                        $('#loginResult')
-                            .removeClass('alert-success')
-                            .addClass('alert-danger')
-                            .text(response ? response.message : 'Bir hata oluştu. Lütfen tekrar deneyiniz.')
-                            .show();
+                        showErrorMessage(response ? response.message : 'Bir hata oluştu. Lütfen tekrar deneyiniz.');
+                        resetSubmitButton();
                     }
                 });
+                
+                function showErrorMessage(message) {
+                    $('#loginResult')
+                        .removeClass('alert-success')
+                        .addClass('alert-danger fade-in')
+                        .html('<i class="bi bi-exclamation-triangle me-2"></i>' + message)
+                        .show();
+                }
+                
+                function resetSubmitButton() {
+                    submitBtn.html(originalBtnText).prop('disabled', false);
+                }
             });
         });
     </script>

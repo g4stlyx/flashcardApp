@@ -1,8 +1,121 @@
 ﻿@{
-    ViewData["Title"] = "G4stLy";
+    ViewData["Title"] = "Home - Flashcard App";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="container mt-4">
+    <section class="hero-section bg-gradient-primary text-white p-5 rounded-xl mb-5">
+        <div class="row align-items-center">
+            <div class="col-md-7">
+                <h1 class="display-4 fw-bold mb-3 fade-in">Öğrenmeyi kolaylaştırın</h1>
+                <p class="fs-5 mb-4">Kendi flashcard setlerinizi oluşturun, arkadaşlarınızla paylaşın ve öğrenmede hızlı ilerleme sağlayın.</p>
+                <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+                    <a href="/FlashcardsView/Index" class="btn btn-light btn-lg px-4 me-md-2 fw-bold">Setlere Göz At</a>
+                    <a href="/AuthView/Register" class="btn btn-outline-light btn-lg px-4">Kayıt Ol</a>
+                </div>
+            </div>
+            <div class="col-md-5 d-none d-md-block">
+                <img src="https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?q=80&w=1470&auto=format&fit=crop" 
+                     alt="Flashcard illustration" class="img-fluid rounded-xl shadow-lg" style="max-height: 300px; object-fit: cover;">
+            </div>
+        </div>
+    </section>
+
+    <section class="features mb-5">
+        <h2 class="text-center mb-4">Özellikler</h2>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card-modern p-4 text-center">
+                    <div class="feature-icon bg-primary bg-gradient p-3 rounded-circle d-inline-flex mb-3">
+                        <i class="bi bi-pencil-square text-white fs-3"></i>
+                    </div>
+                    <h3>Kart Setlerinizi Oluşturun</h3>
+                    <p>İhtiyacınıza göre özelleştirilebilir flashcard setleri oluşturun. Terim ve tanım eklemenin yanında, görsellerle zenginleştirin.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card-modern p-4 text-center">
+                    <div class="feature-icon bg-secondary bg-gradient p-3 rounded-circle d-inline-flex mb-3">
+                        <i class="bi bi-share-fill text-white fs-3"></i>
+                    </div>
+                    <h3>Arkadaşlarınızla Paylaşın</h3>
+                    <p>Setlerinizi arkadaşlarınızla paylaşın veya herkese açık olarak yayınlayın. Öğrenme deneyimini sosyal hale getirin.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card-modern p-4 text-center">
+                    <div class="feature-icon bg-success bg-gradient p-3 rounded-circle d-inline-flex mb-3">
+                        <i class="bi bi-graph-up-arrow text-white fs-3"></i>
+                    </div>
+                    <h3>İlerlemenizi Takip Edin</h3>
+                    <p>Çalışma alışkanlıklarınızı geliştirin ve öğrenme sürecinizi takip edin. Hangi setlerde güçlü olduğunuzu görün.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="testimonials bg-light p-5 rounded-xl mb-5">
+        <h2 class="text-center mb-4">Kullanıcılarımız ne diyor?</h2>
+        <div class="row">
+            <div class="col-md-4 mb-3 mb-md-0">
+                <div class="card-modern h-100">
+                    <div class="card-body">
+                        <div class="d-flex mb-3">
+                            <i class="bi bi-star-fill text-warning me-1"></i>
+                            <i class="bi bi-star-fill text-warning me-1"></i>
+                            <i class="bi bi-star-fill text-warning me-1"></i>
+                            <i class="bi bi-star-fill text-warning me-1"></i>
+                            <i class="bi bi-star-fill text-warning"></i>
+                        </div>
+                        <p class="card-text">"Bu uygulama sayesinde sınavlarıma çok daha etkili hazırlanabiliyorum. Arkadaşlarımla aynı setleri kullanmak çok pratik!"</p>
+                        <div class="mt-3">
+                            <h5 class="mb-0">Ayşe Y.</h5>
+                            <small class="text-muted">Üniversite öğrencisi</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3 mb-md-0">
+                <div class="card-modern h-100">
+                    <div class="card-body">
+                        <div class="d-flex mb-3">
+                            <i class="bi bi-star-fill text-warning me-1"></i>
+                            <i class="bi bi-star-fill text-warning me-1"></i>
+                            <i class="bi bi-star-fill text-warning me-1"></i>
+                            <i class="bi bi-star-fill text-warning me-1"></i>
+                            <i class="bi bi-star-half text-warning"></i>
+                        </div>
+                        <p class="card-text">"Yabancı dil öğrenirken kelime hazinemi geliştirmek için kullanıyorum. Görsel destekli kartlar sayesinde akılda kalıcılık artıyor."</p>
+                        <div class="mt-3">
+                            <h5 class="mb-0">Mehmet K.</h5>
+                            <small class="text-muted">Yabancı dil öğrencisi</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card-modern h-100">
+                    <div class="card-body">
+                        <div class="d-flex mb-3">
+                            <i class="bi bi-star-fill text-warning me-1"></i>
+                            <i class="bi bi-star-fill text-warning me-1"></i>
+                            <i class="bi bi-star-fill text-warning me-1"></i>
+                            <i class="bi bi-star-fill text-warning me-1"></i>
+                            <i class="bi bi-star text-warning"></i>
+                        </div>
+                        <p class="card-text">"Öğretmen olarak öğrencilerime tavsiye ediyorum. Kolay arayüzü ve paylaşım özellikleri sayesinde grup çalışmaları çok verimli oluyor."</p>
+                        <div class="mt-3">
+                            <h5 class="mb-0">Zeynep A.</h5>
+                            <small class="text-muted">Lise öğretmeni</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta text-center mb-5">
+        <h2 class="mb-3">Hemen başlayın!</h2>
+        <p class="lead mb-4">Flashcard setleri oluşturmak, paylaşmak ve çalışmak için ücretsiz hesap oluşturun.</p>
+        <a href="/AuthView/Register" class="btn btn-primary-modern btn-lg px-5">Kayıt Ol</a>
+    </section>
 </div>

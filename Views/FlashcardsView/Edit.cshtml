@@ -157,10 +157,19 @@
                         <label for="exampleSentence" class="form-label">Örnek Cümle (İsteğe Bağlı)</label>
                         <textarea class="form-control" id="exampleSentence" rows="2"></textarea>
                     </div>
-                    
-                    <div class="mb-3">
+                      <div class="mb-3">
                         <label for="imageUrl" class="form-label">Fotoğraf URL (İsteğe Bağlı)</label>
-                        <input type="url" class="form-control" id="imageUrl">
+                        <div class="input-group mb-2">
+                            <span class="input-group-text"><i class="bi bi-image"></i></span>
+                            <input type="url" class="form-control" id="imageUrl">
+                            <button class="btn btn-outline-secondary" type="button" id="previewImageBtn">Önizle</button>
+                        </div>
+                        <div id="imagePreviewContainer" class="mt-2 p-2 border rounded text-center d-none">
+                            <img id="imagePreview" class="img-fluid" style="max-height: 150px;">
+                            <div class="text-danger d-none" id="imagePreviewError">
+                                <i class="bi bi-exclamation-triangle"></i> Resim yüklenemedi
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -423,6 +432,38 @@
                     });
                 }
         });
+            
+            // Image preview functionality
+            $('#previewImageBtn').click(function() {
+                const imageUrl = $('#imageUrl').val().trim();
+                const previewContainer = $('#imagePreviewContainer');
+                
+                if (!imageUrl) {
+                    alert('Önce bir resim URL\'si girin.');
+                    return;
+                }
+                
+                // Show loading
+                previewContainer.removeClass('d-none');
+                previewContainer.html('<div class="py-3"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>');
+                
+                // Try to load the image
+                const img = new Image();
+                img.onload = function() {
+                    previewContainer.empty();
+                    previewContainer.append(img);
+                    $(img).addClass('img-fluid').css('max-height', '150px');
+                };
+                img.onerror = function() {
+                    previewContainer.html(`
+                        <div class="text-danger p-3">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            Resim yüklenemedi. URL'yi kontrol edin.
+                        </div>
+                    `);
+                };
+                img.src = imageUrl;
+            });
             
             // Auto-add token to all AJAX requests for this page
             const token = localStorage.getItem("token");

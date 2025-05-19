@@ -4,71 +4,106 @@
 }
 
 <div class="container mt-4">
-    <div class="row">
+    <div class="row gy-4">
         <!-- Set Details -->
-        <div class="col-md-4">
-            <div class="card mb-4">
+        <div class="col-lg-4">
+            <div class="card-modern p-0 shadow-hover" data-set-owner-id="@Model.UserId">
                 @if (!string.IsNullOrEmpty(Model.CoverImageUrl))
                 {
-                    <img src="@Model.CoverImageUrl" class="card-img-top" alt="@Model.Title" style="height: 180px; object-fit: cover;">
+                    <img src="@Model.CoverImageUrl" class="card-img-top" alt="@Model.Title">
                 }
                 else
                 {
-                    <div class="card-img-top bg-secondary text-white d-flex align-items-center justify-content-center" style="height: 180px;">
+                    <div class="card-img-top bg-gradient-primary text-white d-flex align-items-center justify-content-center">
                         <i class="bi bi-card-heading" style="font-size: 3rem;"></i>
                     </div>
                 }
-                <div class="card-body" data-set-owner-id="@Model.UserId">
-                    <h2 class="card-title">@Model.Title</h2>
-                    <p class="card-text">@Model.Description</p>
-                    <div class="mb-3">
-                        <strong>Sahibi:</strong> @Model.User.Username<br />
-                        <strong>Oluşturulma Tarihi:</strong> @Model.CreatedAt.ToString("MMM dd, yyyy")<br />
-                        <strong>Kartlar:</strong> @Model.Flashcards.Count<br />
-                        <strong>Görünürlük:</strong> 
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="badge rounded-pill" style="background-color: var(--primary-light); color: var(--primary-dark)">
+                            <i class="bi bi-card-text me-1"></i>@Model.Flashcards.Count kart
+                        </span>
                         <span class="badge @(Model.Visibility == Visibility.Public ? "bg-success" : 
-                                           Model.Visibility == Visibility.Friends ? "bg-info" : "bg-secondary")">
+                                         Model.Visibility == Visibility.Friends ? "bg-info" : "bg-secondary")">
                             @Model.Visibility
                         </span>
                     </div>
+                    
+                    <h2 class="card-title">@Model.Title</h2>
+                    <p class="card-text mb-4">@Model.Description</p>
+                    
+                    <div class="d-flex align-items-center mb-4">
+                        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3" 
+                             style="width: 48px; height: 48px;">
+                            <i class="bi bi-person-fill fs-4"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-0">@Model.User.Username</h6>
+                            <small class="text-muted">@Model.CreatedAt.ToString("MMMM dd, yyyy")</small>
+                        </div>
+                    </div>
+                    
                     <div class="d-grid gap-2">
-                        <a asp-action="Study" asp-route-id="@Model.Id" class="btn btn-success">Seti Çalış</a>
-                        <a id="editSetButton" style="display: none;" href="/FlashcardsView/Edit/@Model.Id" class="btn btn-outline-primary">Seti düzenle</a>
+                        <a asp-action="Study" asp-route-id="@Model.Id" class="btn btn-success-modern">
+                            <i class="bi bi-journal-check me-2"></i>Seti Çalış
+                        </a>
+                        <a id="editSetButton" style="display: none;" href="/FlashcardsView/Edit/@Model.Id" class="btn btn-outline-primary-modern">
+                            <i class="bi bi-pencil-square me-2"></i>Seti düzenle
+                        </a>
+                        <button id="favoriteButton" class="btn btn-outline-secondary mt-2" style="display: none;">
+                            <i class="bi bi-heart me-2"></i>Favorilere Ekle
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
-
         <!-- Flashcards -->
-        <div class="col-md-8">
-            <h3>Kartlar</h3>
-            <div class="row">
-                @foreach (var flashcard in Model.Flashcards)
-                {
-                    <div class="col-md-6 mb-3">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <h5 class="card-title">@flashcard.Term</h5>
-                                <hr />
-                                <p class="card-text">@flashcard.Definition</p>
-                                @if (!string.IsNullOrEmpty(flashcard.ExampleSentence))
-                                {
-                                    <p class="card-text text-muted"><em>Örnek: @flashcard.ExampleSentence</em></p>
-                                }
-                                @if (!string.IsNullOrEmpty(flashcard.ImageUrl))
-                                {
-                                    <img src="@flashcard.ImageUrl" class="img-fluid mt-2" alt="@flashcard.Term" style="max-height: 150px;">
-                                }
+        <div class="col-lg-8">
+            <div class="d-flex justify-content-between align-items-center mb-3 cards-header">
+                <h3 class="me-3">Kartlar</h3>
+                <div class="btn-group ms-auto">
+                    <button class="btn btn-sm btn-outline-primary active" id="gridViewBtn">
+                        <i class="bi bi-grid-3x3-gap-fill"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary" id="listViewBtn">
+                        <i class="bi bi-list-ul"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="row g-4">                
+                @foreach (var flashcard in Model.Flashcards){
+                    <div class="col-md-6 mb-4 flashcard-item">
+                        <div class="flashcard-container">
+                            <div class="flashcard" onclick="this.classList.toggle('flipped')">
+                                <div class="flashcard-front">
+                                    <h4 class="mb-3">@flashcard.Term</h4>       
+                                    @if (!string.IsNullOrEmpty(flashcard.ImageUrl)){
+                                        <div class="card-image-container mt-3">
+                                            <img src="@flashcard.ImageUrl" class="img-fluid rounded" alt="@flashcard.Term">
+                                        </div>
+                                    }
+                                </div>
+                                <div class="flashcard-back">
+                                    <h5 class="mb-3">Tanım</h5>
+                                    <p>@flashcard.Definition</p>
+                                    @if (!string.IsNullOrEmpty(flashcard.ExampleSentence))
+                                    {
+                                        <div class="mt-3 p-2 border-start border-3 border-primary bg-light">
+                                            <small><strong>Örnek:</strong> @flashcard.ExampleSentence</small>
+                                        </div>
+                                    }
+                                </div>
                             </div>
                         </div>
                     </div>
                 }
             </div>
-            @if (!Model.Flashcards.Any())
-            {
-                <div class="alert alert-info">
-                    Bu set henüz hiç kart içermiyor.
-                    <a id="emptySetEditButton" style="display: none;" href="/FlashcardsView/Edit/@Model.Id">Hemen Ekle!</a>
+            @if (!Model.Flashcards.Any()){
+                <div class="alert alert-info rounded-xl p-4 text-center">
+                    <i class="bi bi-exclamation-circle fs-1 mb-3"></i>
+                    <h5>Bu set henüz hiç kart içermiyor.</h5>
+                    <a id="emptySetEditButton" class="btn btn-primary-modern mt-3" style="display: none;" href="/FlashcardsView/Edit/@Model.Id">Hemen Ekle!</a>
                 </div>
             }
         </div>
@@ -79,6 +114,7 @@
     <script src="~/js/set-page-handler.js"></script>
     <script src="~/js/admin-handler.js"></script>
     <script src="~/js/delete-set-handler.js"></script>
+    <script src="~/js/modern-set-page.js"></script>
     <script>
         // Local implementation of navigateWithToken in case admin-handler.js isn't loaded
         function localNavigateWithToken(url, params = {}) {

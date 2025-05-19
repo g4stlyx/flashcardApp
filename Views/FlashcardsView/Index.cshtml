@@ -4,44 +4,78 @@
 }
 
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Herkese Açık Setler</h1>
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+        <div>
+            <h1 class="mb-2">Herkese Açık Setler</h1>
+            <p class="text-muted">Topluluğumuzun paylaştığı setleri keşfedin ve öğrenmeye başlayın</p>
+        </div>
         @if (User.Identity.IsAuthenticated)
         {
-            <a class="btn btn-primary" asp-action="Create">Yeni Set Oluştur</a>
+            <a class="btn btn-primary-modern mt-2 mt-md-0" asp-action="Create">
+                <i class="bi bi-plus-circle me-2"></i>Yeni Set Oluştur
+            </a>
         }
     </div>
 
-    <div class="row">
+    <div class="mb-4">
+        <div class="input-group">
+            <span class="input-group-text bg-white border-end-0">
+                <i class="bi bi-search"></i>
+            </span>
+            <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Set ara...">
+        </div>
+    </div>
+
+    <div class="row g-4">
         @foreach (var set in Model)
         {
-            <div class="col-md-4 mb-4">
-                <div class="card h-100">
+            <div class="col-md-6 col-lg-4 mb-4 fade-in set-card">
+                <div class="card-modern">
                     @if (!string.IsNullOrEmpty(set.CoverImageUrl))
                     {
-                        <img src="@set.CoverImageUrl" class="card-img-top" alt="@set.Title" style="height: 180px; object-fit: cover;">
+                        <img src="@set.CoverImageUrl" class="card-img-top" alt="@set.Title">
                     }
                     else
                     {
-                        <div class="card-img-top bg-secondary text-white d-flex align-items-center justify-content-center" style="height: 180px;">
+                        <div class="card-img-top bg-gradient-primary text-white d-flex align-items-center justify-content-center">
                             <i class="bi bi-card-heading" style="font-size: 3rem;"></i>
                         </div>
                     }
                     <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="badge rounded-pill" 
+                                  style="background-color: var(--primary-light); color: var(--primary-dark)">
+                                <i class="bi bi-card-text me-1"></i>@set.Flashcards.Count kart
+                            </span>
+                            <span class="badge @(set.Visibility == Visibility.Public ? "bg-success" : 
+                                            set.Visibility == Visibility.Friends ? "bg-info" : "bg-secondary")">
+                                @set.Visibility
+                            </span>
+                        </div>
                         <h5 class="card-title">@set.Title</h5>
                         <p class="card-text">
                             @(string.IsNullOrEmpty(set.Description) ? "No description" : 
                               set.Description.Length > 100 ? set.Description.Substring(0, 97) + "..." : set.Description)
                         </p>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <small class="text-muted">By: @set.User.Username</small>
-                            <small class="text-muted">@set.Flashcards.Count cards</small>
+                        <div class="d-flex align-items-center mt-3">
+                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2" 
+                                 style="width: 32px; height: 32px;">
+                                <i class="bi bi-person-fill"></i>
+                            </div>
+                            <div>
+                                <small class="text-muted">@set.User.Username</small>
+                                <small class="text-muted d-block">@(set.CreatedAt.ToString("MMM dd, yyyy"))</small>
+                            </div>
                         </div>
                     </div>
-                    <div class="card-footer bg-transparent border-top-0">
+                    <div class="card-footer">
                         <div class="d-flex justify-content-between">
-                            <a asp-action="Set" asp-route-id="@set.Id" class="btn btn-outline-primary">Görüntüle</a>
-                            <a asp-action="Study" asp-route-id="@set.Id" class="btn btn-success">Çalış</a>
+                            <a asp-action="Set" asp-route-id="@set.Id" class="btn btn-outline-primary-modern">
+                                <i class="bi bi-eye me-1"></i>Görüntüle
+                            </a>
+                            <a asp-action="Study" asp-route-id="@set.Id" class="btn btn-success-modern">
+                                <i class="bi bi-journal-check me-1"></i>Çalış
+                            </a>
                         </div>
                     </div>
                 </div>
