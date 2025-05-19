@@ -1,6 +1,8 @@
 # flashcard app
 fullstack project. C# .NET, MVC, SSR. 
 
+* online at http://flashcard-app.g4stly.tr/ (deployed for now, i will remove it from heroku after presentation until i have a physical server)
+
 * an app that people could create, put into their favourites, and share flashcard sets (publicly -to everyone-, or with friends)
 
 * User Accounts &amp; Profiles, Flashcard Sets, Favourites System, Friends System, Feed ("Flow") Page.
