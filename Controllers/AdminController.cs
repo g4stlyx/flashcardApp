@@ -118,10 +118,29 @@ namespace flashcardApp.Controllers
 
             return View(user);
         }
-        
-        [HttpPost]
-        public async Task<IActionResult> DeleteUser(int userId)
+          [HttpPost]
+        public async Task<IActionResult> DeleteUser(int userId, string token)
         {
+            Console.WriteLine($"[AdminController] DeleteUser called for userId: {userId}");
+            Console.WriteLine($"[AdminController] Token provided: {(token != null ? "YES, length: " + token.Length : "NO")}");
+            
+            // Debug authorization headers
+            if (Request.Headers.ContainsKey("Authorization"))
+            {
+                Console.WriteLine($"[AdminController] Authorization header found: {Request.Headers["Authorization"]}");
+            }
+            else
+            {
+                Console.WriteLine($"[AdminController] No Authorization header found");
+            }
+            
+            // If token provided, manually add to authorization header
+            if (!string.IsNullOrEmpty(token) && !Request.Headers.ContainsKey("Authorization"))
+            {
+                Console.WriteLine($"[AdminController] Adding token to Authorization header");
+                Request.Headers.Append("Authorization", $"Bearer {token}");
+            }
+            
             var user = await _context.Users
                 .Include(u => u.FlashcardSets)
                     .ThenInclude(fs => fs.Flashcards)
@@ -131,6 +150,7 @@ namespace flashcardApp.Controllers
                 
             if (user == null)
             {
+                Console.WriteLine($"[AdminController] User with ID {userId} not found");
                 return NotFound();
             }
             
@@ -138,6 +158,7 @@ namespace flashcardApp.Controllers
             var currentUserIdClaim = User.FindFirst("nameid");
             if (currentUserIdClaim != null && int.TryParse(currentUserIdClaim.Value, out int currentUserId) && currentUserId == userId)
             {
+                Console.WriteLine($"[AdminController] Attempted to delete own account: {currentUserId}");
                 TempData["ErrorMessage"] = "Kendi hesabınızı silemezsiniz!";
                 return RedirectWithToken(nameof(ManageUsers));
             }
@@ -148,17 +169,33 @@ namespace flashcardApp.Controllers
                 _context.Flashcards.RemoveRange(set.Flashcards);
                 _context.FlashcardSets.Remove(set);
             }
-            
-            // Delete all friend requests
+              // Delete all friend requests
             _context.FriendRequests.RemoveRange(user.SentFriendRequests);
             _context.FriendRequests.RemoveRange(user.ReceivedFriendRequests);
+            
+            // Delete friendships
+            var friendships = await _context.Friends
+                .Where(f => f.UserId1 == userId || f.UserId2 == userId)
+                .ToListAsync();
+            _context.Friends.RemoveRange(friendships);
+            Console.WriteLine($"[AdminController] Removed {friendships.Count} friendships");
             
             // Delete the user
             _context.Users.Remove(user);
             await _context.SaveChangesAsync();
             
-            TempData["SuccessMessage"] = $"{user.Username} kullanıcısı başarıyla silindi.";
-            return RedirectWithToken(nameof(ManageUsers));
-        }
-    }
+            // Handle both AJAX and standard form submissions
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            {
+                Console.WriteLine($"[AdminController] AJAX request detected, returning JSON success");
+                return Json(new { success = true, message = $"{user.Username} kullanıcısı başarıyla silindi." });
+            }
+            else
+            {
+                Console.WriteLine($"[AdminController] Standard form submission, redirecting with token");
+                TempData["SuccessMessage"] = $"{user.Username} kullanıcısı başarıyla silindi.";
+                return RedirectWithToken(nameof(ManageUsers));
+            }
+        }        // DeleteUserApi endpoint removed as we're simplifying our approach
+    }    // Class removed as we're using form parameters now
 }

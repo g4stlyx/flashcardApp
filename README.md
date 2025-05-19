@@ -6,9 +6,11 @@ fullstack project. C# .NET, MVC, SSR.
 * User Accounts &amp; Profiles, Flashcard Sets, Favourites System, Friends System, Feed ("Flow") Page.
 
 ### TODO (after the presentation)
+* all console logs will be cleared.
+    * \+ the auth tests etc. 
 * profile page (password change, some profile edit parts)
-* liking sets functionality, my fav sets page.
 * 404, 403, 401, 500 etc. pages
+* liking sets functionality, my fav sets page.
 * Controller security should be checked again. some does not have friends check (for sets) or owner check.
     * these should be checked using functions to be avoid repeating the same things.
 * Token url'de parametre olarak gözükmemeli. (in FlascardsView/MySets)

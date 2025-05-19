@@ -276,11 +276,89 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                <form asp-controller="Admin" asp-action="DeleteUser" method="post" class="admin-form">
+                <form id="deleteForm-@Model.Id" asp-controller="Admin" asp-action="DeleteUser" method="post" class="admin-form">
                     <input type="hidden" name="userId" value="@Model.Id" />
+                    <input type="hidden" name="token" id="token-@Model.Id" />
                     <button type="submit" class="btn btn-danger">Kullanıcıyı Sil</button>
                 </form>
             </div>
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script src="~/js/admin-handler.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Get token and assign to hidden field
+            const token = localStorage.getItem('token');
+            if (!token) {
+                console.error("No token found for admin operations");
+                return;
+            }
+            
+            console.log("UserDetails page init - token found, length: " + token.length);
+            
+            // Add token to the admin form
+            const tokenInput = document.querySelector('input[name="token"]');
+            if (tokenInput) {
+                tokenInput.value = token;
+                console.log("Token added to form");
+            }
+            
+            // Handle form submission
+            const deleteForm = document.getElementById('deleteForm-@Model.Id');
+            if (deleteForm) {
+                deleteForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    console.log("Delete form submission intercepted");
+                    
+                    // Get the current token right before submission
+                    const currentToken = localStorage.getItem('token');
+                    if (!currentToken) {
+                        alert("Your session has expired. Please log in again.");
+                        window.location.href = "/AuthView/Login";
+                        return;
+                    }
+                    
+                    // Update token input with fresh token
+                    const tokenInput = this.querySelector('input[name="token"]');
+                    if (tokenInput) {
+                        tokenInput.value = currentToken;
+                    }
+                    
+                    // Use AJAX to send the request
+                    $.ajax({
+                        url: '/Admin/DeleteUser',
+                        type: 'POST',
+                        data: {
+                            userId: @Model.Id,
+                            token: currentToken
+                        },
+                        headers: {
+                            'Authorization': 'Bearer ' + currentToken,
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        success: function(response) {
+                            console.log("User deleted successfully");
+                            // Close the modal
+                            $('#deleteUserModal').modal('hide');
+                            
+                            // Show success message and redirect
+                            alert('Kullanıcı başarıyla silindi.');
+                            window.location.href = '/Admin/ManageUsers?token=' + encodeURIComponent(currentToken);
+                        },
+                        error: function(xhr, status, error) {
+                            console.error("Error deleting user:", error);
+                            console.error("Status:", status);
+                            console.error("Response:", xhr.responseText);
+                            
+                            // Show error message
+                            alert("Kullanıcı silinirken bir hata oluştu: " + (xhr.responseText || error));
+                        }
+                    });
+                });
+            }
+        });
+    </script>
+}

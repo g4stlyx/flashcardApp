@@ -1482,6 +1482,33 @@ namespace flashcardApp.Controllers
             return Ok(new { message = "Arkadaşlık isteği reddedildi." });
         }
 
+        // POST: api/friends/remove-friend
+        [HttpPost("api/friends/remove-friend")]
+        [Authentication.JwtAuthorize("Registered")]
+        public async Task<IActionResult> ApiRemoveFriend([FromBody] ApiFriendIdModel model)
+        {
+            var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            
+            Console.WriteLine($"[DEBUG] Remove friend API called - currentUserId: {currentUserId}, friendId: {model.FriendId}");
+
+            // Find the friendship
+            var friendship = await _context.Friends
+                .FirstOrDefaultAsync(f =>
+                    (f.UserId1 == currentUserId && f.UserId2 == model.FriendId) ||
+                    (f.UserId1 == model.FriendId && f.UserId2 == currentUserId));
+
+            if (friendship == null)
+            {
+                return NotFound(new { message = "Arkadaşlık bulunamadı." });
+            }
+
+            // Remove the friendship
+            _context.Friends.Remove(friendship);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Arkadaşlık silindi." });
+        }
+
         // Models for API requests
         public class ApiRequestModel
         {
@@ -1491,6 +1518,11 @@ namespace flashcardApp.Controllers
         public class ApiRequestIdModel
         {
             public int RequestId { get; set; }
+        }
+
+        public class ApiFriendIdModel
+        {
+            public int FriendId { get; set; }
         }
     }
 }

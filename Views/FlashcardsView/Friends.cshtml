@@ -117,7 +117,7 @@
                                 <a href="/FlashcardsView/UserSets/@friend.Id" class="btn btn-sm btn-info me-2" data-token-handler="true">
                                     <i class="bi bi-card-list"></i> Setleri Gör
                                 </a>
-                                <form method="post" action="/FlashcardsView/RemoveFriend" class="d-inline">
+                                <form class="remove-friend-form d-inline">
                                     <input type="hidden" name="friendId" value="@friend.Id" />
                                     <button type="submit" class="btn btn-sm btn-outline-danger">
                                         <i class="bi bi-person-dash"></i> Çıkar
@@ -293,6 +293,45 @@
                     })
                     .catch(error => {
                         console.error('Error:', error);
+                    });
+                });
+            });
+            
+            // Handle remove friend via AJAX
+            const removeFriendForms = document.querySelectorAll('.remove-friend-form');
+            removeFriendForms.forEach(form => {
+                const friendId = form.querySelector('input[name="friendId"]').value;
+                
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    fetch('/api/friends/remove-friend', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + localStorage.getItem('token')
+                        },
+                        body: JSON.stringify({ friendId: parseInt(friendId) })
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Failed to remove friend');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        // Remove the friend item from UI
+                        const friendItem = form.closest('li');
+                        friendItem.innerHTML = '<div class="alert alert-warning">Arkadaşlık silindi.</div>';
+                        
+                        // Auto-refresh after 2 seconds
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 2000);
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Arkadaşlık silinirken bir hata oluştu.');
                     });
                 });
             });
