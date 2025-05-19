@@ -39,7 +39,7 @@ namespace flashcardApp.Services
             
             if (user == null)
             {
-                return (false, string.Empty, "Invalid username or password");
+                return (false, string.Empty, "Yanlış kullanıcı adı veya parola");
             }
 
             // Verify the password with stored hash and salt
@@ -47,13 +47,13 @@ namespace flashcardApp.Services
 
             if (!isValid)
             {
-                return (false, string.Empty, "Invalid username or password");
+                return (false, string.Empty, "Yanlış kullanıcı adı veya parola");
             }
 
             // Generate JWT token
             var token = GenerateJwtToken(user);
 
-            return (true, token, "Login successful");
+            return (true, token, "Giriş başarılı");
         }
 
         public async Task<(bool Success, string Message)> RegisterAsync(string username, string email, string password)
@@ -61,13 +61,13 @@ namespace flashcardApp.Services
             // Check if username already exists
             if (await _context.Users.AnyAsync(u => u.Username.ToLower() == username.ToLower()))
             {
-                return (false, "Username already exists");
+                return (false, "Kullanıcı Adı zaten mevcut");
             }
 
             // Check if email already exists
             if (await _context.Users.AnyAsync(u => u.Email.ToLower() == email.ToLower()))
             {
-                return (false, "Email already exists");
+                return (false, "Email zaten mevcut");
             }
 
             // Hash the password
@@ -88,7 +88,7 @@ namespace flashcardApp.Services
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            return (true, "Registration successful");
+            return (true, "Kayıt başarılı");
         }
 
         public string GenerateJwtToken(User user)
