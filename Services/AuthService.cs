@@ -24,7 +24,7 @@ namespace flashcardApp.Services
         {
             _context = context;
             
-            // Load settings from environment variables
+            // settings from env variables
             _pepper = Env.GetString("PASSWORD_PEPPER");
             _jwtSecret = Env.GetString("JWT_SECRET");
             _jwtIssuer = Env.GetString("JWT_ISSUER");

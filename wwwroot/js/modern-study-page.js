@@ -1,7 +1,4 @@
-/**
- * Modern Study Page Handler
- * Enhanced interactive flashcard study experience
- */
+// Modern Study Page Handler with Enhanced interactive flashcard study experience
 
 document.addEventListener("DOMContentLoaded", function() {
     console.log("Modern study page handler loaded");

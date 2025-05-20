@@ -57,6 +57,7 @@ namespace flashcardApp.ViewComponents
             excludedIds.AddRange(friendIds);
             excludedIds.AddRange(requestUserIds);
             excludedIds.Add(currentUserId);
+            
             // Find users with most flashcard sets who are not already friends or have pending requests
             var suggestedUsers = await _context.Users
                 .Where(u => !excludedIds.Contains(u.Id))

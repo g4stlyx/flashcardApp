@@ -1,7 +1,5 @@
 // JWT Handler for MVC Views
 
-// IMMEDIATE jQuery AJAX setup - do this at the top level before any events
-// This ensures any script using jQuery has the token set up
 (function() {
   const token = localStorage.getItem("token");
   if (token && typeof $ !== 'undefined' && $.ajax) {

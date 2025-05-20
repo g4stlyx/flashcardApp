@@ -1,4 +1,5 @@
 // Script to fix user ID issues by providing manual control
+
 document.addEventListener("DOMContentLoaded", function() {
     // Only add this to the debug pages
     if (window.location.pathname.includes("UserSetsDebug") || window.location.pathname.includes("AuthDebug")) {

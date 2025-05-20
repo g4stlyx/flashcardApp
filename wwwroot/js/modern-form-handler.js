@@ -1,6 +1,4 @@
-/**
- * Modern Create/Edit Page Handler
- */
+// Create/Edit Page Handler
 
 document.addEventListener("DOMContentLoaded", function() {
     if (window.location.pathname.includes("/FlashcardsView/Create") || 

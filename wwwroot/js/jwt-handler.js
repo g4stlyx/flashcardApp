@@ -1,7 +1,5 @@
 // JWT Handler for MVC Views
 
-// IMMEDIATE jQuery AJAX setup - do this at the top level before any events
-// This ensures any script using jQuery has the token set up
 (function() {
   const token = localStorage.getItem("token");
   if (token && typeof $ !== 'undefined' && $.ajax) {
@@ -123,8 +121,6 @@ function parseJwt(token) {
 // Helper function to check if token is expired
 function isTokenExpired(parsedTokenClaims) {
   if (!parsedTokenClaims || typeof parsedTokenClaims.exp === "undefined") {
-    // No claims or no expiration claim, assume not expired or rely on server.
-    // For stricter client-side validation, one might treat absence of 'exp' as an issue.
     console.log("Token has no expiration claim or claims object is invalid.");
     return false;
   }

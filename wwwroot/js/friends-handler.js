@@ -1,5 +1,4 @@
-// Friends functionality handler for the Flashcard App
-// This script handles showing the friends menu items and notifications for logged in users
+// handles showing the friends menu items and notifications for logged in users
 
 document.addEventListener('DOMContentLoaded', function() {
     // Check if user is logged in

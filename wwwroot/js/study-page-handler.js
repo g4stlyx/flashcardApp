@@ -1,4 +1,5 @@
 // Special handler for Study page
+
 document.addEventListener("DOMContentLoaded", function() {
     console.log("Study page handler loaded - NEW VERSION");
     

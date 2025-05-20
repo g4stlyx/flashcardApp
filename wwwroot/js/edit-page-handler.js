@@ -1,4 +1,5 @@
 // Special handler for Edit pages
+
 document.addEventListener("DOMContentLoaded", function() {
     console.log("Edit page handler loaded");
     

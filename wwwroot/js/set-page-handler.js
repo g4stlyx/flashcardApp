@@ -1,4 +1,5 @@
 // Special handler for Set.cshtml page
+
 document.addEventListener("DOMContentLoaded", function () {
   console.log("Set page handler loaded");
 

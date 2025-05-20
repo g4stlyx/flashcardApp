@@ -1,5 +1,4 @@
-// Create page form handler
-// This script ensures that forms on the Create page include the authentication token
+// ensures that forms on the Create page include the authentication token
 
 document.addEventListener('DOMContentLoaded', function() {
     // Get form elements

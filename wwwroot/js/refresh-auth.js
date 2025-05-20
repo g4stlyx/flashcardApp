@@ -1,5 +1,3 @@
-// Authentication state refresh handler
-
 // Function to force a complete authentication refresh
 function forceAuthRefresh() {
     console.log("Forcing complete authentication refresh...");

@@ -1,5 +1,4 @@
-// Authenticated Links Handler
-// This script handles all links within the FlashcardsView that might need authentication tokens
+// handles all links within the FlashcardsView that might need authentication tokens
 
 document.addEventListener('DOMContentLoaded', function() {
     setupAuthenticatedLinksHandlers();

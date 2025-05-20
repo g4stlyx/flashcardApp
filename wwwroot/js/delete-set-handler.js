@@ -1,5 +1,4 @@
-// Set deletion handler for flashcard application
-// This script handles the deletion of flashcard sets by owners and admins
+// handles the deletion of flashcard sets by owners and admins
 
 document.addEventListener('DOMContentLoaded', function() {
     setupDeleteSetButtons();

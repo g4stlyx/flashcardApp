@@ -1,6 +1,6 @@
-// Admin functionality handler for flashcard app
+// Admin functionality handler
 
-// Add this script to handle admin navigation with token
+// to handle admin navigation with token
 function setupAdminLinks() {
     // Get the JWT token from local storage
     const token = localStorage.getItem('token');
@@ -60,7 +60,7 @@ function setupAdminLinks() {
     highlightSearchTerms();
 }
 
-// Function to navigate to an admin page with the token
+// to navigate to an admin page with the token
 function navigateWithToken(url, params = {}) {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -112,7 +112,7 @@ function navigateWithToken(url, params = {}) {
     window.location.href = finalUrl;
 }
 
-// Function to make admin tables sortable
+// to make admin tables sortable
 function setupTableSorting() {
     document.querySelectorAll('.table thead th').forEach(headerCell => {
         headerCell.addEventListener('click', () => {
@@ -154,7 +154,7 @@ function setupTableSorting() {
     });
 }
 
-// Function to highlight search terms in the table
+// to highlight search terms in the table
 function highlightSearchTerms() {
     // Get search term from URL
     const urlParams = new URLSearchParams(window.location.search);
@@ -172,7 +172,7 @@ function highlightSearchTerms() {
     }
 }
 
-// Add this to ensure Edit and Create links always have the token
+// to ensure Edit and Create links always have the token
 function addTokenToEditLinks() {
     // Handle Edit links
     document.querySelectorAll('a[href^="/FlashcardsView/Edit/"]').forEach(link => {
@@ -256,7 +256,7 @@ function addTokenToEditLinks() {
 document.addEventListener('DOMContentLoaded', function() {
     setupAdminLinks();
     addTokenToEditLinks();
-    setupAjaxAuthForAdmins(); // Add this to ensure all pages have proper token handling
+    setupAjaxAuthForAdmins(); // to ensure all pages have proper token handling
 });
 
 // Also run after each AJAX request that could modify the page content

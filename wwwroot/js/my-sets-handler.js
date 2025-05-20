@@ -1,4 +1,5 @@
 // Special handler for MySets page
+
 document.addEventListener("DOMContentLoaded", function() {
     console.log("MySets page handler loaded");
     

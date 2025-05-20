@@ -1,5 +1,4 @@
-// Private Sets Handler
-// This script ensures that private sets can be accessed by owners and admins
+// ensures that private sets can be accessed by owners and admins
 
 document.addEventListener('DOMContentLoaded', function() {
     setupPrivateSetHandlers();

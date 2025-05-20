@@ -1,6 +1,4 @@
-/* 
- * Enhanced Set page handler with modern UI interactions
- */
+// Enhanced Set page handler with modern UI interactions
 
 document.addEventListener('DOMContentLoaded', function() {
     // View switching functionality
