@@ -17,7 +17,6 @@ namespace flashcardApp.Controllers
         
         public IActionResult Logout()
         {
-            // This is handled client-side by removing the token
             return RedirectToAction("Login");
         }
     }

@@ -55,7 +55,7 @@ namespace flashcardApp.Controllers
             
             return RedirectToAction(action, routeValues);
         }
-          public async Task<IActionResult> ManageUsers(string searchTerm = null)
+        public async Task<IActionResult> ManageUsers(string searchTerm = null)
         {
             // Start with base query - we need to execute this first, not use as IQueryable
             var usersQuery = _context.Users
@@ -118,7 +118,8 @@ namespace flashcardApp.Controllers
 
             return View(user);
         }
-          [HttpPost]
+
+        [HttpPost]
         public async Task<IActionResult> DeleteUser(int userId, string token)
         {
             Console.WriteLine($"[AdminController] DeleteUser called for userId: {userId}");
@@ -196,6 +197,6 @@ namespace flashcardApp.Controllers
                 TempData["SuccessMessage"] = $"{user.Username} kullanıcısı başarıyla silindi.";
                 return RedirectWithToken(nameof(ManageUsers));
             }
-        }        // DeleteUserApi endpoint removed as we're simplifying our approach
-    }    // Class removed as we're using form parameters now
+        }
+    }
 }
