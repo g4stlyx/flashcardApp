@@ -10,6 +10,7 @@ fullstack project. C# .NET, MVC, SSR.
 ### TODO (after the presentation)
 * all console logs will be cleared.
     * \+ the auth tests etc. 
+* optimization + DRY
 * profile page (password change, some profile edit parts)
 * 404, 403, 401, 500 etc. pages
 * liking sets functionality, my fav sets page.

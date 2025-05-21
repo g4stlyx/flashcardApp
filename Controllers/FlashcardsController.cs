@@ -31,13 +31,12 @@ namespace flashcardApp.Controllers
                 return NotFound();
             }
 
-            // Load related data
             _context.Entry(flashcard).Reference(f => f.FlashcardSet).Load();
 
-            // Check if the set is private
+            // is the set private?
             if (flashcard.FlashcardSet.Visibility == Visibility.Private)
             {
-                // Only allow the owner to view flashcards in private sets
+                // only owners
                 if (!User.Identity.IsAuthenticated)
                 {
                     return Forbid();
@@ -72,7 +71,7 @@ namespace flashcardApp.Controllers
                 return BadRequest(ModelState);
             }
 
-            // Verify user owns the set
+            // is owner?
             var set = _context.FlashcardSets.Find(request.SetId);
             if (set == null)
             {
@@ -98,7 +97,6 @@ namespace flashcardApp.Controllers
                 _context.Flashcards.Add(flashcard);
                 _context.SaveChanges();
                 
-                // Return a simplified version of the flashcard to avoid circular references
                 return CreatedAtAction(nameof(GetFlashcard), new { id = flashcard.Id }, new
                 {
                     flashcard.Id,
@@ -113,7 +111,6 @@ namespace flashcardApp.Controllers
             }
             catch (Exception ex)
             {
-                // Log the exception
                 Console.Error.WriteLine($"Error creating flashcard: {ex.Message}");
                 return StatusCode(500, new { message = ex.Message });
             }
@@ -130,7 +127,7 @@ namespace flashcardApp.Controllers
                 return NotFound();
             }
 
-            // Load related data to check ownership
+            // is owner?
             _context.Entry(flashcard).Reference(f => f.FlashcardSet).Load();
 
             var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
@@ -161,7 +158,7 @@ namespace flashcardApp.Controllers
                 return NotFound();
             }
 
-            // Load related data to check ownership
+            // is ownner?
             _context.Entry(flashcard).Reference(f => f.FlashcardSet).Load();
 
             var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
@@ -186,10 +183,10 @@ namespace flashcardApp.Controllers
                 return NotFound("Flashcard set not found");
             }
 
-            // Check if the set is private
+            // is the set private?
             if (set.Visibility == Visibility.Private)
             {
-                // Only allow the owner to view flashcards in private sets
+                // only owners
                 if (!User.Identity.IsAuthenticated)
                 {
                     return Forbid();

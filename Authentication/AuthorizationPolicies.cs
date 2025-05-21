@@ -6,11 +6,11 @@ namespace flashcardApp.Authentication
     {
         public static void AddPolicies(AuthorizationOptions options)
         {
-            // Admin only policy
+            // sadece adminler
             options.AddPolicy("AdminOnly", policy =>
                 policy.RequireClaim("UserType", "Admin"));
                 
-            // Registered users (both users and admins)
+            // kayıtlı kullanıcılar ve adminler
             options.AddPolicy("Registered", policy =>
                 policy.RequireClaim("UserType", "User", "Admin"));
         }

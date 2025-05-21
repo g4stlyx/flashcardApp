@@ -116,7 +116,6 @@
     <script src="~/js/delete-set-handler.js"></script>
     <script src="~/js/modern-set-page.js"></script>
     <script>
-        // Local implementation of navigateWithToken in case admin-handler.js isn't loaded
         function localNavigateWithToken(url, params = {}) {
             const token = localStorage.getItem('token');
             if (!token) {
@@ -124,73 +123,55 @@
                 return;
             }
             
-            // Build the URL with parameters
             let finalUrl = url;
             const queryParams = new URLSearchParams();
             
-            // Add token
             queryParams.append('token', token);
             
-            // Add other params
             for (const [key, value] of Object.entries(params)) {
                 queryParams.append(key, value);
             }
             
-            // Append query string to URL
             finalUrl += '?' + queryParams.toString();
             
-            // Navigate
             console.log(`Navigating to: ${finalUrl}`);
             window.location.href = finalUrl;
         }
         
         document.addEventListener('DOMContentLoaded', function() {
-            // Get token from localStorage
             const token = localStorage.getItem('token');
             if (!token) return;
             
             try {
-                // Parse the JWT token
                 const tokenPayload = JSON.parse(atob(token.split('.')[1]));
-                
-                // Get user ID from token
-                const userIdFromToken = parseInt(tokenPayload.nameid);
-                
-                // Get set owner ID
+                const userIdFromToken = parseInt(tokenPayload.nameid);                
                 const setOwnerId = @Model.UserId;
                 
-                // Check if user is admin
                 const isAdmin = tokenPayload.role === "Admin" || 
                                 tokenPayload["UserType"] === "Admin" ||
                                 (tokenPayload.role && Array.isArray(tokenPayload.role) && tokenPayload.role.includes("Admin"));
                                               
-                // Show edit button only if user is the owner or admin
                 if (userIdFromToken === setOwnerId || isAdmin) {
                     console.log('User can edit this set - showing edit buttons');
                     
-                    // Main edit button
                     const editSetButton = document.getElementById('editSetButton');
                     if (editSetButton) {
                         editSetButton.style.display = 'block';
                     }
                     
-                    // Empty set edit button
                     const emptySetEditButton = document.getElementById('emptySetEditButton');
                     if (emptySetEditButton) {
                         emptySetEditButton.style.display = 'inline-block';
                     }
                     
-                    // Make sure the edit buttons include token when clicked
                     document.querySelectorAll('#editSetButton, #emptySetEditButton').forEach(button => {
                         button.addEventListener('click', function(e) {
                             e.preventDefault();
                             
-                            // Navigate with token to ensure authentication works
                             const href = this.getAttribute('href');                            
                             if (typeof navigateWithToken === 'function') {
                                 navigateWithToken(href);
                             } else {
-                                // Use our local implementation
                                 localNavigateWithToken(href);
                             }
                         });

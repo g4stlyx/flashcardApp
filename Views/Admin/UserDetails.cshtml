@@ -3,7 +3,8 @@
 @{
     ViewData["Title"] = "Kullanıcı Detayları - " + Model.Username;
     Layout = "_Layout";
-    // Helper function to get accepted friend requests
+    
+    // get accepted friend requests
     IEnumerable<flashcardApp.Models.User> GetFriends(flashcardApp.Models.User user)
     {
         var sentAccepted = user.SentFriendRequests
@@ -17,7 +18,7 @@
         return sentAccepted.Concat(receivedAccepted);
     }
     
-    // Calculate user activity statistics
+    // user activity statistics
     var daysSinceRegistration = (DateTime.UtcNow - Model.CreatedAt).TotalDays;
     var totalSets = Model.FlashcardSets.Count;
     var totalCards = Model.FlashcardSets.Sum(s => s.Flashcards?.Count ?? 0);
@@ -25,13 +26,13 @@
     var cardsPerDay = daysSinceRegistration > 0 ? totalCards / daysSinceRegistration : 0;
     var friends = GetFriends(Model).ToList();
     
-    // Last activity calculation (most recent between set creation and user update)
+    // last activity (most recent between set creation and user update)
     var lastSetActivity = Model.FlashcardSets.Any() 
         ? Model.FlashcardSets.Max(s => s.UpdatedAt > s.CreatedAt ? s.UpdatedAt : s.CreatedAt)
         : DateTime.MinValue;
     var lastActivity = Model.UpdatedAt > lastSetActivity ? Model.UpdatedAt : lastSetActivity;
     var lastActivityDays = (DateTime.UtcNow - lastActivity).TotalDays;
-    var isActiveUser = lastActivityDays < 30; // Active if used in last 30 days
+    var isActiveUser = lastActivityDays < 30; // "active" if used in last 30 days
 }
 
 <div class="container mt-4">
@@ -290,7 +291,6 @@
     <script src="~/js/admin-handler.js"></script>
     <script>
         $(document).ready(function() {
-            // Get token and assign to hidden field
             const token = localStorage.getItem('token');
             if (!token) {
                 console.error("No token found for admin operations");
@@ -299,21 +299,18 @@
             
             console.log("UserDetails page init - token found, length: " + token.length);
             
-            // Add token to the admin form
             const tokenInput = document.querySelector('input[name="token"]');
             if (tokenInput) {
                 tokenInput.value = token;
                 console.log("Token added to form");
             }
             
-            // Handle form submission
             const deleteForm = document.getElementById('deleteForm-@Model.Id');
             if (deleteForm) {
                 deleteForm.addEventListener('submit', function(e) {
                     e.preventDefault();
                     console.log("Delete form submission intercepted");
                     
-                    // Get the current token right before submission
                     const currentToken = localStorage.getItem('token');
                     if (!currentToken) {
                         alert("Your session has expired. Please log in again.");
@@ -321,13 +318,11 @@
                         return;
                     }
                     
-                    // Update token input with fresh token
                     const tokenInput = this.querySelector('input[name="token"]');
                     if (tokenInput) {
                         tokenInput.value = currentToken;
                     }
                     
-                    // Use AJAX to send the request
                     $.ajax({
                         url: '/Admin/DeleteUser',
                         type: 'POST',
@@ -341,10 +336,8 @@
                         },
                         success: function(response) {
                             console.log("User deleted successfully");
-                            // Close the modal
                             $('#deleteUserModal').modal('hide');
                             
-                            // Show success message and redirect
                             alert('Kullanıcı başarıyla silindi.');
                             window.location.href = '/Admin/ManageUsers?token=' + encodeURIComponent(currentToken);
                         },
@@ -353,7 +346,6 @@
                             console.error("Status:", status);
                             console.error("Response:", xhr.responseText);
                             
-                            // Show error message
                             alert("Kullanıcı silinirken bir hata oluştu: " + (xhr.responseText || error));
                         }
                     });

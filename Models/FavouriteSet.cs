@@ -8,7 +8,7 @@ namespace flashcardApp.Models
         public int SetId { get; set; }
         public DateTime CreatedAt { get; set; }
 
-        // Navigation properties
+        // Navigation
         public User User { get; set; } = null!;
         public FlashcardSet FlashcardSet { get; set; } = null!;
     }

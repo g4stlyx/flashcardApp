@@ -71,10 +71,8 @@
 @section Scripts {
     <script>
         $(document).ready(function() {
-            // Focus username field on page load
             $('#username').focus();
             
-            // Show/hide password functionality
             $('#showPasswordCheck').on('change', function() {
                 const passwordField = $('#password');
                 if ($(this).is(':checked')) {
@@ -84,11 +82,9 @@
                 }
             });
             
-            // Form submission with animation
             $('#loginForm').submit(function(e) {
                 e.preventDefault();
                 
-                // Disable the submit button and show loading state
                 const submitBtn = $(this).find('button[type="submit"]');
                 const originalBtnText = submitBtn.html();
                 submitBtn.html('<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Giriş yapılıyor...').prop('disabled', true);
@@ -105,17 +101,14 @@
                     data: JSON.stringify(loginData),
                     success: function(response) {
                         if (response.success) {
-                            // Store only token in localStorage - user data will be extracted from token when needed
                             localStorage.setItem('token', response.token);
                             
-                            // Show success message
                             $('#loginResult')
                                 .removeClass('alert-danger')
                                 .addClass('alert-success fade-in')
                                 .html('<i class="bi bi-check-circle me-2"></i>Giriş Başarılı! Yönlendiriliyor...')
                                 .show();
                                 
-                            // Redirect to home page after a short delay
                             setTimeout(function() {
                                 window.location.href = '/';
                             }, 1000);

@@ -122,7 +122,6 @@
     <script src="~/js/authenticated-links-handler.js" asp-append-version="true"></script>
     <script>
         $(document).ready(function () {
-            // Debug the authentication state immediately on page load
             console.log("Page loaded, checking authentication state...");
 
             function updateNavbarVisibility() {
@@ -135,20 +134,16 @@
                             const userInfo = getUserInfoFromToken(token);
 
                             if (userInfo && userInfo.username) {
-                                // User is authenticated, update navbar
                                 console.log("User authenticated as: " + userInfo.username);
 
-                                // Show user-specific links
                                 $("#mySetsItem").show();
                                 $("#friendsItem").show();
                                 $("#friendSetsItem").show();
 
-                                // Show logout, hide login
                                 $("#loginItem").hide();
                                 $("#logoutItem").removeClass("d-none").show();
                                 $("#usernameDisplay").text(userInfo.username);
 
-                                // Handle admin-specific items
                                 if (userInfo.isAdmin) {
                                     console.log("User is admin, showing admin links");
                                     $("#adminDashboardItem").show();
@@ -175,18 +170,14 @@
             }
 
             function resetNavbarToLoggedOut() {
-                // Hide authenticated-only items
                 $("#mySetsItem, #friendsItem, #friendSetsItem, #adminDashboardItem").hide();
 
-                // Show login, hide logout
                 $("#loginItem").show();
                 $("#logoutItem").addClass("d-none").hide();
             }
 
-            // Initialize navbar on page load
             updateNavbarVisibility();
 
-            // Handle logout action
             $("#logoutLink").on("click", function (e) {
                 e.preventDefault();
                 localStorage.removeItem("token");
@@ -195,15 +186,13 @@
                 window.location.href = "/AuthView/Login";
             });
 
-            // Update navbar visibility whenever localStorage changes (in other tabs)
             window.addEventListener("storage", function (e) {
                 if (e.key === "token") {
                     updateNavbarVisibility();
                 }
             });
 
-            // Check authentication state periodically
-            setInterval(updateNavbarVisibility, 60000); // Check every minute
+            setInterval(updateNavbarVisibility, 60000);
         });
     </script>
 

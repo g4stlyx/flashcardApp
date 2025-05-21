@@ -6,7 +6,7 @@ namespace flashcardApp.Models
         public int SetId { get; set; }
         public string TagName { get; set; } = null!;
 
-        // Navigation property
+        // navigation
         public FlashcardSet FlashcardSet { get; set; } = null!;
     }
 }

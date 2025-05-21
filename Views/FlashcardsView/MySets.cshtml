@@ -40,7 +40,6 @@
                     </div>
                     <div class="card-footer bg-transparent border-top-0">
                         <div class="d-flex justify-content-between">
-                            <!-- Modified to use data-set-id instead of direct href for private set handling -->
                             <a href="javascript:void(0);" data-set-id="@set.Id" class="btn btn-outline-primary view-set-btn">Görüntüle</a>
                             <a href="javascript:void(0);" data-set-id="@set.Id" class="btn btn-success study-set-btn">Çalış</a>
                         </div>
@@ -61,17 +60,14 @@
     <script src="~/js/admin-handler.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Add click handlers for all set links to ensure token is included
             document.querySelectorAll('.view-set-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
                     const setId = this.getAttribute('data-set-id');
                     const url = `/FlashcardsView/Set/${setId}`;
                     
-                    // Use navigateWithToken to ensure token is passed
                     if (typeof navigateWithToken === 'function') {
                         navigateWithToken(url);
                     } else {
-                        // Fallback implementation if admin-handler.js isn't loaded
                         const token = localStorage.getItem('token');
                         if (token) {
                             window.location.href = `${url}?token=${encodeURIComponent(token)}`;
@@ -87,11 +83,9 @@
                     const setId = this.getAttribute('data-set-id');
                     const url = `/FlashcardsView/Study/${setId}`;
                     
-                    // Use navigateWithToken to ensure token is passed
                     if (typeof navigateWithToken === 'function') {
                         navigateWithToken(url);
                     } else {
-                        // Fallback implementation if admin-handler.js isn't loaded
                         const token = localStorage.getItem('token');
                         if (token) {
                             window.location.href = `${url}?token=${encodeURIComponent(token)}`;

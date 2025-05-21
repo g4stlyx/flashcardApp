@@ -18,7 +18,7 @@ namespace flashcardApp.Controllers
             _context = context;
         }
         
-        // Helper method to preserve token in redirects
+        // put token in redirects
         private IActionResult RedirectWithToken(string action, object routeValues = null)
         {
             string token = Request.Query["token"].ToString();
@@ -40,7 +40,6 @@ namespace flashcardApp.Controllers
                 }
                 else
                 {
-                    // Add token to existing route values using reflection
                     var type = routeValues.GetType();
                     var properties = type.GetProperties();
                     var dictionary = new System.Collections.Generic.Dictionary<string, object>();
@@ -57,7 +56,6 @@ namespace flashcardApp.Controllers
         }
         public async Task<IActionResult> ManageUsers(string searchTerm = null)
         {
-            // Start with base query - we need to execute this first, not use as IQueryable
             var usersQuery = _context.Users
                 .Include(u => u.FlashcardSets)
                     .ThenInclude(fs => fs.Flashcards)
@@ -65,7 +63,7 @@ namespace flashcardApp.Controllers
                 .Include(u => u.ReceivedFriendRequests)
                 .AsQueryable();
 
-            // Apply search filter if provided
+            // apply search filter if it exists
             if (!string.IsNullOrEmpty(searchTerm))
             {
                 searchTerm = searchTerm.ToLower();
@@ -76,11 +74,10 @@ namespace flashcardApp.Controllers
                     (u.LastName != null && u.LastName.ToLower().Contains(searchTerm))
                 );
 
-                // Pass the search term to the view for display
                 ViewData["SearchTerm"] = searchTerm;
             }
 
-            // Get statistics
+            // statistics
             var users = await usersQuery.ToListAsync();
             var totalAdmins = users.Count(u => u.IsAdmin);
             var totalRegularUsers = users.Count - totalAdmins;
@@ -88,7 +85,7 @@ namespace flashcardApp.Controllers
             var totalFlashcards = users.Sum(u => u.FlashcardSets.Sum(fs => fs.Flashcards?.Count ?? 0));
             var latestUserRegistration = users.OrderByDescending(u => u.CreatedAt).FirstOrDefault()?.CreatedAt;
 
-            // Add statistics to ViewBag
+            // add statistics to ViewBag
             ViewBag.TotalUsers = users.Count;
             ViewBag.TotalAdmins = totalAdmins;
             ViewBag.TotalRegularUsers = totalRegularUsers;
@@ -125,7 +122,7 @@ namespace flashcardApp.Controllers
             Console.WriteLine($"[AdminController] DeleteUser called for userId: {userId}");
             Console.WriteLine($"[AdminController] Token provided: {(token != null ? "YES, length: " + token.Length : "NO")}");
             
-            // Debug authorization headers
+            // header debugging
             if (Request.Headers.ContainsKey("Authorization"))
             {
                 Console.WriteLine($"[AdminController] Authorization header found: {Request.Headers["Authorization"]}");
@@ -135,7 +132,7 @@ namespace flashcardApp.Controllers
                 Console.WriteLine($"[AdminController] No Authorization header found");
             }
             
-            // If token provided, manually add to authorization header
+            // if token -> add to the auth header
             if (!string.IsNullOrEmpty(token) && !Request.Headers.ContainsKey("Authorization"))
             {
                 Console.WriteLine($"[AdminController] Adding token to Authorization header");
@@ -155,7 +152,7 @@ namespace flashcardApp.Controllers
                 return NotFound();
             }
             
-            // Check if trying to delete yourself
+            // users cannot delete theirselves
             var currentUserIdClaim = User.FindFirst("nameid");
             if (currentUserIdClaim != null && int.TryParse(currentUserIdClaim.Value, out int currentUserId) && currentUserId == userId)
             {
@@ -164,28 +161,27 @@ namespace flashcardApp.Controllers
                 return RedirectWithToken(nameof(ManageUsers));
             }
             
-            // Delete associated flashcard sets and cards
+            // delete all flashcards and sets with the user
             foreach (var set in user.FlashcardSets.ToList())
             {
                 _context.Flashcards.RemoveRange(set.Flashcards);
                 _context.FlashcardSets.Remove(set);
             }
-              // Delete all friend requests
+
+            // delete all friend stuff too
             _context.FriendRequests.RemoveRange(user.SentFriendRequests);
             _context.FriendRequests.RemoveRange(user.ReceivedFriendRequests);
             
-            // Delete friendships
             var friendships = await _context.Friends
                 .Where(f => f.UserId1 == userId || f.UserId2 == userId)
                 .ToListAsync();
             _context.Friends.RemoveRange(friendships);
             Console.WriteLine($"[AdminController] Removed {friendships.Count} friendships");
             
-            // Delete the user
+            // finally delete the user
             _context.Users.Remove(user);
             await _context.SaveChangesAsync();
             
-            // Handle both AJAX and standard form submissions
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             {
                 Console.WriteLine($"[AdminController] AJAX request detected, returning JSON success");

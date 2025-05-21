@@ -24,7 +24,7 @@
         </div>
     }
     
-    <!-- Statistics Dashboard -->
+    <!-- statistics -->
     <div class="row mb-4">
         <div class="col-md-12 mb-4">
             <div class="card">
@@ -293,16 +293,13 @@
     <script src="~/js/admin-handler.js"></script>
     <script>
         $(document).ready(function() {
-            // User filtering
+            // user filtering
             $('.filter-btn').click(function() {
-                // Update active button
                 $('.filter-btn').removeClass('active');
                 $(this).addClass('active');
                 
-                // Get filter value
                 const filter = $(this).data('filter');
                 
-                // Show/hide rows based on filter
                 if (filter === 'all') {
                     $('.user-row').show();
                 } else if (filter === 'admin') {
@@ -314,7 +311,8 @@
                 }
             });
         });
-        // Initialize admin handlers
+
+        // init admin handlers
         document.addEventListener('DOMContentLoaded', function() {
             const token = localStorage.getItem('token');
             if (!token) {
@@ -324,7 +322,7 @@
             
             console.log("Admin page init - token found, length: " + token.length);
             
-            // Add token to all admin forms
+            // add token to all admin forms
             document.querySelectorAll('.admin-form').forEach(form => {
                 const tokenInput = form.querySelector('input[name="token"]');
                 if (tokenInput) {
@@ -333,20 +331,18 @@
                 }
             });
             
-            // Set up admin links
+            // set up admin links
             if (typeof setupAdminLinks === 'function') {
                 setupAdminLinks();
             } else {
                 console.error("Admin handler function not found");
             }
             
-            // Let's handle deletion forms specifically
             document.querySelectorAll('[id^="deleteForm-"]').forEach(form => {
                 form.addEventListener('submit', function(e) {
                     e.preventDefault();
                     console.log("Delete form submission intercepted: " + this.id);
                     
-                    // Get the current token right before submission
                     const currentToken = localStorage.getItem('token');
                     if (!currentToken) {
                         alert("Your session has expired. Please log in again.");
@@ -354,13 +350,12 @@
                         return;
                     }
                     
-                    // Update the token input with fresh token
                     const tokenInput = this.querySelector('input[name="token"]');
                     if (tokenInput) {
                         tokenInput.value = currentToken;
                         console.log("Token updated for form submission, length: " + currentToken.length);
                     } else {
-                        // Create token input if it doesn't exist
+                        // create token input if it doesn't exist
                         const newTokenInput = document.createElement('input');
                         newTokenInput.type = 'hidden';
                         newTokenInput.name = 'token';
@@ -369,7 +364,6 @@
                         console.log("Token created for form submission");
                     }
                     
-                    // Add token to URL as well (belt and suspenders approach)
                     const formAction = this.getAttribute('action');
                     this.setAttribute('action', formAction + '?token=' + encodeURIComponent(currentToken));
                     
@@ -379,9 +373,7 @@
             });
         });
         
-        // Add direct AJAX handler for deleting users
         $(document).ready(function() {
-            // Prepare all delete forms with token
             document.querySelectorAll('.admin-form').forEach(form => {
                 const tokenInput = form.querySelector('input[name="token"]');
                 if (tokenInput) {
@@ -389,7 +381,6 @@
                 }
             });
             
-            // Add event listener to all delete forms
             document.querySelectorAll('form.admin-form').forEach(form => {
                 form.addEventListener('submit', function(e) {
                     e.preventDefault();
@@ -403,7 +394,6 @@
                         window.location.href = "/AuthView/Login";
                         return;
                     }
-                    // Use AJAX to send the request with the token in both URL and headers
                     $.ajax({
                         url: '/Admin/DeleteUser',
                         type: 'POST',
@@ -417,17 +407,14 @@
                         },
                         success: function(response) {
                             console.log("User deleted successfully");
-                            // Close the modal
                             $('.modal').modal('hide');
                             
-                            // Show success message
                             const alert = $('<div class="alert alert-success alert-dismissible fade show" role="alert">' +
                                             'Kullanıcı başarıyla silindi.' +
                                             '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' +
                                             '</div>');
                             $('.container').prepend(alert);
                             
-                            // Reload the page after a short delay
                             setTimeout(function() {
                                 window.location.href = '/Admin/ManageUsers?token=' + encodeURIComponent(token);
                             }, 1500);
@@ -437,7 +424,6 @@
                             console.error("Status:", status);
                             console.error("Response:", xhr.responseText);
                             
-                            // Show error message
                             alert("Kullanıcı silinirken bir hata oluştu: " + (xhr.responseText || error));
                         }
                     });

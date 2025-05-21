@@ -24,7 +24,6 @@ namespace flashcardApp.Controllers
         {
             var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
             
-            // Find the request
             var request = await _context.FriendRequests
                 .FirstOrDefaultAsync(r => r.Id == model.RequestId && r.SenderId == currentUserId);
                 
@@ -33,14 +32,13 @@ namespace flashcardApp.Controllers
                 return NotFound(new { message = "İstek bulunamadı." });
             }
             
-            // Remove the request
             _context.FriendRequests.Remove(request);
             await _context.SaveChangesAsync();
             
             return Ok(new { message = "Arkadaşlık isteği iptal edildi." });
         }
 
-        // Model for request
+        // request model
         public class RequestIdModel
         {
             public int RequestId { get; set; }

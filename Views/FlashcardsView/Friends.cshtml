@@ -66,6 +66,7 @@
             }
         </div>
     </div>
+
     <!-- Add New Friend Section -->
     <div class="card mb-4">
         <div class="card-header">
@@ -142,12 +143,9 @@
     <script src="~/js/authenticated-links-handler.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Show navigation items for logged in users
             document.getElementById('friendsItem').style.display = 'block';
             document.getElementById('friendSetsItem').style.display = 'block';
-            // UserSets links are now handled by authenticated-links-handler.js
             
-            // Handle friend request form submission
             const friendRequestForm = document.getElementById('friendRequestForm');
             if (friendRequestForm) {
                 friendRequestForm.addEventListener('submit', function(e) {
@@ -156,7 +154,6 @@
                     const username = document.getElementById('usernameInput').value;
                     const resultDiv = document.getElementById('friendRequestResult');
                     
-                    // Send friend request via API
                     fetch('/api/friends/send-request', {
                         method: 'POST',
                         headers: {
@@ -183,7 +180,6 @@
                                 resultDiv.innerHTML = `<div class="alert alert-danger">${result.data.message}</div>`;
                             }
                             
-                            // Hide the message after 5 seconds
                             setTimeout(() => {
                                 resultDiv.style.display = 'none';
                             }, 5000);
@@ -197,7 +193,6 @@
                 });
             }
             
-            // Handle accept/decline friend requests via AJAX
             const acceptButtons = document.querySelectorAll('form[action="/FlashcardsView/AcceptFriendRequest"] button');
             const declineButtons = document.querySelectorAll('form[action="/FlashcardsView/DeclineFriendRequest"] button');
             
@@ -218,11 +213,9 @@
                     })
                     .then(response => response.json())
                     .then(data => {
-                        // Remove the request item from UI
                         const requestItem = form.closest('li');
                         requestItem.innerHTML = '<div class="alert alert-success">İstek kabul edildi. Sayfayı yenilemek için <a href="/FlashcardsView/Friends">tıklayın</a>.</div>';
                         
-                        // Auto-refresh after 2 seconds
                         setTimeout(() => {
                             window.location.reload();
                         }, 2000);
@@ -249,11 +242,9 @@
                     })
                     .then(response => response.json())
                     .then(data => {
-                        // Remove the request item from UI
                         const requestItem = form.closest('li');
                         requestItem.innerHTML = '<div class="alert alert-warning">İstek reddedildi.</div>';
                         
-                        // Remove from DOM after 2 seconds
                         setTimeout(() => {
                             requestItem.remove();
                         }, 2000);
@@ -264,7 +255,6 @@
                 });
             });
             
-            // Handle cancel friend requests via AJAX
             const cancelButtons = document.querySelectorAll('.cancel-request-form');
             cancelButtons.forEach(form => {
                 const requestId = form.querySelector('input[name="requestId"]').value;
@@ -282,11 +272,9 @@
                     })
                     .then(response => response.json())
                     .then(data => {
-                        // Remove the request item from UI
                         const requestItem = form.closest('li');
                         requestItem.innerHTML = '<div class="alert alert-warning">İstek iptal edildi.</div>';
                         
-                        // Remove from DOM after 2 seconds
                         setTimeout(() => {
                             requestItem.remove();
                         }, 2000);
@@ -297,7 +285,6 @@
                 });
             });
             
-            // Handle remove friend via AJAX
             const removeFriendForms = document.querySelectorAll('.remove-friend-form');
             removeFriendForms.forEach(form => {
                 const friendId = form.querySelector('input[name="friendId"]').value;
@@ -320,11 +307,9 @@
                         return response.json();
                     })
                     .then(data => {
-                        // Remove the friend item from UI
                         const friendItem = form.closest('li');
                         friendItem.innerHTML = '<div class="alert alert-warning">Arkadaşlık silindi.</div>';
                         
-                        // Auto-refresh after 2 seconds
                         setTimeout(() => {
                             window.location.reload();
                         }, 2000);

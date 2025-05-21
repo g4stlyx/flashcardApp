@@ -19,7 +19,7 @@ namespace flashcardApp.Models
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
 
-        // Navigation properties
+        // navigation
         public ICollection<FlashcardSet> FlashcardSets { get; set; } = new List<FlashcardSet>();
         public ICollection<FavouriteSet> FavouriteSets { get; set; } = new List<FavouriteSet>();
         public ICollection<FriendRequest> SentFriendRequests { get; set; } = new List<FriendRequest>();

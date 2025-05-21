@@ -131,7 +131,6 @@
 
 @section Scripts {
     <script>
-        // Initialize global flashcards array with clean JSON data
         window.flashcards = [
             @foreach(var card in Model.Flashcards)
             {
@@ -147,6 +146,5 @@
         
         console.log("Flashcards loaded:", window.flashcards);
     </script>
-    <!-- Use only the modern study page handler -->
     <script src="~/js/modern-study-page.js"></script>
 }

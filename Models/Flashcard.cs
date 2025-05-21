@@ -13,7 +13,7 @@ namespace flashcardApp.Models
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
 
-        // Navigation property
+        // Navigation
         public FlashcardSet FlashcardSet { get; set; } = null!;
     }
 }

@@ -42,37 +42,31 @@ namespace flashcardApp.Controllers
         {
             Console.WriteLine("MySets (GET) action called");
 
-            // Log detailed request information
             Console.WriteLine($"IsAuthenticated: {User.Identity?.IsAuthenticated}");
             Console.WriteLine($"Request URL: {Request.Path}{Request.QueryString}");
             Console.WriteLine($"HTTP Method: {Request.Method}");
             Console.WriteLine($"Token parameter provided: {!string.IsNullOrEmpty(token)}");
 
-            // Log headers
             Console.WriteLine("Headers:");
             foreach (var header in Request.Headers)
             {
                 Console.WriteLine($"  {header.Key}: {header.Value}");
             }
 
-            // Log all available auth methods
             Console.WriteLine("Auth Methods Available:");
             Console.WriteLine($"  Auth Header: {Request.Headers.ContainsKey("Authorization")}");
             Console.WriteLine($"  Query Token: {Request.Query.ContainsKey("token")}");
             Console.WriteLine($"  Cookie JWT: {Request.Cookies.ContainsKey("jwt")}");
             Console.WriteLine($"  User Principal: {User?.Identity?.IsAuthenticated}");
 
-            // If token is provided in the query string but not in headers,
-            // manually add it to the authorization header for subsequent requests
+            // put token from the query to headers
             if (!string.IsNullOrEmpty(token) && !Request.Headers.ContainsKey("Authorization"))
             {
                 Console.WriteLine("Using token from query parameter for authentication");
-                // Cannot modify headers here as they're read-only at this point,
-                // but we can add to the current HttpContext for downstream middleware
                 HttpContext.Items["ManualToken"] = token;
             }
 
-            // Make sure we have a valid user ID in the claims
+            // is user valid?
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userIdClaim))
@@ -81,7 +75,7 @@ namespace flashcardApp.Controllers
 
                 string extractedToken = null;
 
-                // Check for JWT token in Authorization header (primary method)
+                // check for JWT in auth header
                 string authHeader = Request.Headers["Authorization"];
                 if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
                 {
@@ -89,14 +83,14 @@ namespace flashcardApp.Controllers
                     Console.WriteLine($"Found JWT in Authorization header: {extractedToken.Substring(0, Math.Min(20, extractedToken.Length))}...");
                 }
 
-                // Check for token as a query parameter as a fallback
+                // check for token as a query parameter
                 if (string.IsNullOrEmpty(extractedToken) && Request.Query.TryGetValue("token", out var queryToken))
                 {
                     extractedToken = queryToken.ToString();
                     Console.WriteLine($"Found JWT in query parameter: {extractedToken.Substring(0, Math.Min(20, extractedToken.Length))}...");
                 }
 
-                // Check for JWT in cookie as last resort (but we're trying to avoid relying on cookies)
+                // check for JWT in cookies as last solution
                 if (string.IsNullOrEmpty(extractedToken) && Request.Cookies.TryGetValue("jwt", out string jwtFromCookie))
                 {
                     extractedToken = jwtFromCookie;
@@ -116,11 +110,8 @@ namespace flashcardApp.Controllers
             Console.WriteLine($"Using claim-based authentication, user ID: {userIdClaim}");
             var userId = int.Parse(userIdClaim);
 
-            // Debug information about the user ID
             Console.WriteLine($"[DEBUG] User ID from token: {userId}");
 
-            // Check if URL has a userId parameter that should override the token's userId
-            // This is specifically added to fix the issue where token claims might be wrong
             int? urlProvidedUserId = null;
             if (Request.Query.ContainsKey("userId") && int.TryParse(Request.Query["userId"], out int parsedId))
             {
@@ -135,7 +126,7 @@ namespace flashcardApp.Controllers
                 Console.WriteLine($"  ID: {user.Id}, Username: {user.Username}, Email: {user.Email}");
             }
 
-            // If URL provided a userId, verify it's a valid user ID first
+            // verify the input id as a valid user ID first
             if (urlProvidedUserId.HasValue)
             {
                 var userFromUrl = await _context.Users.FirstOrDefaultAsync(u => u.Id == urlProvidedUserId.Value);
@@ -152,13 +143,13 @@ namespace flashcardApp.Controllers
 
             Console.WriteLine($"[DEBUG] Looking for sets with UserId = {userId}");
 
-            // Maybe there was an error in lookup or database seed: verify user exists
+            // verify user exists
             var tokenUser = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
             if (tokenUser == null)
             {
                 Console.WriteLine($"[ERROR] User with ID {userId} from token not found in database!");
 
-                // Try to find a user by the username claim instead
+                // try to find a user by the username claim instead
                 var usernameClaim = User.FindFirstValue(ClaimTypes.Name);
                 if (!string.IsNullOrEmpty(usernameClaim))
                 {
@@ -176,21 +167,20 @@ namespace flashcardApp.Controllers
 
             try
             {
-                // First try getting sets without flashcards to be safe
+                // first try getting sets without flashcards
                 var mySets = await _context.FlashcardSets
                     .Where(s => s.UserId == userId)
                     .OrderByDescending(s => s.CreatedAt)
                     .ToListAsync();
 
-                // Then manually load flashcards to avoid potential mapping issues
+                // then load flashcards to avoid potential mapping issues
                 foreach (var set in mySets)
                 {
-                    // Manually load flashcards for each set
+                    // manually load flashcards for each set
                     var flashcards = await _context.Flashcards
                         .Where(f => f.SetId == set.Id)
                         .ToListAsync();
 
-                    // Assign to the navigation property
                     set.Flashcards = flashcards;
                 }
 
@@ -198,11 +188,10 @@ namespace flashcardApp.Controllers
             }
             catch (Exception ex)
             {
-                // Log the error
                 Console.WriteLine($"Error retrieving flashcard sets: {ex.Message}");
                 Console.WriteLine($"Stack trace: {ex.StackTrace}");
 
-                // Return a simple view without flashcards as fallback
+                // return a simple view without flashcards
                 var simpleSets = await _context.FlashcardSets
                     .Where(s => s.UserId == userId)
                     .OrderByDescending(s => s.CreatedAt)
@@ -222,14 +211,14 @@ namespace flashcardApp.Controllers
             }
         }
 
-        // POST: /FlashcardsView/MySets - Alternate approach for form submit with JWT
+        // POST: /FlashcardsView/MySets
         [HttpPost]
         [Route("FlashcardsView/MySets")]
         public async Task<IActionResult> MySetsPost(string jwt)
         {
             Console.WriteLine("MySets (POST) action called");
 
-            // Process the JWT token
+            // check the JWT
             if (string.IsNullOrEmpty(jwt))
             {
                 Console.WriteLine("No JWT provided in POST");
@@ -238,10 +227,10 @@ namespace flashcardApp.Controllers
 
             Console.WriteLine($"Received JWT token: {jwt.Substring(0, Math.Min(20, jwt.Length))}...");
 
-            // Add the token to the Authorization header for future requests
+            // add token to auth header
             HttpContext.Response.Headers.Append("X-JWT-Status", "Valid");
 
-            // Let's try adding a user ID cookie to ensure consistent user identification
+            // add a user ID cookie
             var jwtHandler = new JwtSecurityTokenHandler();
             var parsedToken = jwtHandler.ReadToken(jwt) as JwtSecurityToken;
             var userIdFromClaims = parsedToken?.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
@@ -251,10 +240,10 @@ namespace flashcardApp.Controllers
                 Console.WriteLine($"Setting user_id cookie to {userIdFromClaims}");
                 var cookieOptions = new CookieOptions
                 {
-                    HttpOnly = false,  // Allow JavaScript to access
-                    Secure = HttpContext.Request.IsHttps,  // Secure in production
-                    SameSite = SameSiteMode.Lax,  // Allow some cross-site requests
-                    Expires = DateTime.UtcNow.AddDays(7)  // 7 days expiry
+                    HttpOnly = false,  // allow JS to access
+                    Secure = HttpContext.Request.IsHttps,  // secure in HTTPS (prod)
+                    SameSite = SameSiteMode.Lax,  // allow some cross-site requests
+                    Expires = DateTime.UtcNow.AddDays(7)  // expires after 7 days
                 };
 
                 Response.Cookies.Append("user_id", userIdFromClaims, cookieOptions);
@@ -262,7 +251,7 @@ namespace flashcardApp.Controllers
 
             try
             {
-                // Parse the token claims
+                // the token claims
                 var tokenClaims = parsedToken?.Claims;
                 if (tokenClaims == null)
                 {
@@ -270,7 +259,6 @@ namespace flashcardApp.Controllers
                     return RedirectToAction("Login", "AuthView");
                 }
 
-                // Log all claims for debugging
                 Console.WriteLine("Claims in token:");
                 foreach (var claim in tokenClaims)
                 {
@@ -287,21 +275,19 @@ namespace flashcardApp.Controllers
                 int userIdToUse = int.Parse(userIdClaim.Value);
                 Console.WriteLine($"Using user ID from token: {userIdToUse}");
 
-                // First try getting sets without flashcards to be safe
+                // first get sets without flashcards
                 var mySets = await _context.FlashcardSets
                     .Where(s => s.UserId == userIdToUse)
                     .OrderByDescending(s => s.CreatedAt)
                     .ToListAsync();
 
-                // Then manually load flashcards to avoid potential mapping issues
+                // then manually load flashcards
                 foreach (var set in mySets)
                 {
-                    // Manually load flashcards for each set
                     var flashcards = await _context.Flashcards
                         .Where(f => f.SetId == set.Id)
                         .ToListAsync();
 
-                    // Assign to the navigation property
                     set.Flashcards = flashcards;
                 }
 
@@ -309,18 +295,16 @@ namespace flashcardApp.Controllers
             }
             catch (Exception ex)
             {
-                // Log the error
                 Console.WriteLine($"Error retrieving flashcard sets: {ex.Message}");
                 Console.WriteLine($"Stack trace: {ex.StackTrace}");
 
-                // Get user ID from token
+                // Get user_id
                 int userIdForError = 0;
                 if (!string.IsNullOrEmpty(userIdFromClaims) && int.TryParse(userIdFromClaims, out int parsedId))
                 {
                     userIdForError = parsedId;
                 }
 
-                // Return a simple view without flashcards as fallback
                 var simpleSets = await _context.FlashcardSets
                     .Where(s => s.UserId == userIdForError)
                     .OrderByDescending(s => s.CreatedAt)
@@ -343,7 +327,6 @@ namespace flashcardApp.Controllers
         // GET: /FlashcardsView/Set/5
         public async Task<IActionResult> Set(int id)
         {
-            // Get the set and include flashcards
             var set = await _context.FlashcardSets
                 .Include(s => s.User)
                 .Include(s => s.Flashcards)
@@ -355,13 +338,12 @@ namespace flashcardApp.Controllers
                 return NotFound();
             }
 
-            // Check visibility permissions
+            // check visibility
             if (set.Visibility == Visibility.Private)
             {
-                // For private sets, check if user is authenticated and is the owner or an admin
+                // if private, only owners and admins allowed
                 if (!User.Identity.IsAuthenticated)
                 {
-                    // Extract token from query string if available and try to authenticate
                     if (Request.Query.TryGetValue("token", out var token))
                     {
                         Console.WriteLine("Found token in query for private set, trying to use it");
@@ -372,24 +354,22 @@ namespace flashcardApp.Controllers
 
                 var userIdFromClaim = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
                 
-                // Check for admin status in multiple ways to ensure consistent recognition
+                // check admin
                 bool isAdmin = User.HasClaim(c => c.Type == "UserType" && c.Value == "Admin") || 
                               User.HasClaim(c => c.Type == ClaimTypes.Role && c.Value == "Admin") ||
                               User.IsInRole("Admin");
                 
                 Console.WriteLine($"Private set access: UserId={userIdFromClaim}, SetOwner={set.UserId}, IsAdmin={isAdmin}");
 
-                // Allow access if user is the owner or an admin
                 if (set.UserId != userIdFromClaim && !isAdmin)
                 {
                     return Forbid();
                 }
             }
 
-            // Increment view count
+            // view count++
             try
             {
-                // Create a new SetView record
                 _context.SetViews.Add(new SetView
                 {
                     SetId = set.Id,
@@ -400,23 +380,20 @@ namespace flashcardApp.Controllers
             }
             catch (Exception)
             {
-                // Fail silently - view counting is not critical
             }
 
             return View(set);
         }
 
-        // POST handling for Set action with JWT token
+        // POST: Set action with JWT
         [HttpPost]
         public async Task<IActionResult> Set(int id, string jwt)
         {
-            // Process the JWT token
             if (string.IsNullOrEmpty(jwt))
             {
                 return RedirectToAction("Login", "AuthView");
             }
 
-            // Set the JWT token in the response cookies
             HttpContext.Response.Cookies.Append("jwt", jwt, new CookieOptions
             {
                 HttpOnly = true,
@@ -424,7 +401,6 @@ namespace flashcardApp.Controllers
                 SameSite = SameSiteMode.Strict
             });
 
-            // Continue with the regular action
             var set = await _context.FlashcardSets
                 .Include(s => s.User)
                 .Include(s => s.Flashcards)
@@ -436,10 +412,8 @@ namespace flashcardApp.Controllers
                 return NotFound();
             }
 
-            // Check visibility permissions for private sets
             if (set.Visibility == Visibility.Private)
             {
-                // Validate the JWT token manually
                 var tokenHandler = new JwtSecurityTokenHandler();
                 var jsonTokenObj = tokenHandler.ReadToken(jwt) as JwtSecurityToken;
 
@@ -456,21 +430,18 @@ namespace flashcardApp.Controllers
 
                 var userIdFromToken = int.Parse(userIdClaim.Value);
 
-                // Check if the user is an admin through multiple possible claim locations
                 var userTypeClaim = jsonTokenObj.Claims.FirstOrDefault(c => c.Type == "UserType");
                 var roleClaim = jsonTokenObj.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role);
                 
                 bool isAdmin = (userTypeClaim != null && userTypeClaim.Value == "Admin") ||
                                (roleClaim != null && roleClaim.Value == "Admin");
 
-                // Allow access if user is the owner or an admin
                 if (set.UserId != userIdFromToken && !isAdmin)
                 {
                     return Forbid();
                 }
             }
 
-            // Increment view count
             try
             {
                 _context.SetViews.Add(new SetView
@@ -482,7 +453,6 @@ namespace flashcardApp.Controllers
             }
             catch (Exception)
             {
-                // Fail silently - view counting is not critical
             }
 
             return View(set);
@@ -500,10 +470,8 @@ namespace flashcardApp.Controllers
                 return NotFound();
             }
 
-            // Check visibility permissions
             if (set.Visibility == Visibility.Private)
             {
-                // For private sets, check if user is authenticated and is the owner or an admin
                 if (!User.Identity.IsAuthenticated)
                 {
                     return RedirectToAction("Login", "AuthView");
@@ -512,7 +480,6 @@ namespace flashcardApp.Controllers
                 var userIdFromClaim = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
                 bool isAdmin = User.HasClaim(c => c.Type == "UserType" && c.Value == "Admin");
 
-                // Allow access if user is the owner or an admin
                 if (set.UserId != userIdFromClaim && !isAdmin)
                 {
                     return Forbid();
@@ -522,17 +489,15 @@ namespace flashcardApp.Controllers
             return View(set);
         }
 
-        // POST handling for Study action with JWT token
+        // POST: study action with JWT
         [HttpPost]
         public async Task<IActionResult> Study(int id, string jwt)
         {
-            // Process the JWT token
             if (string.IsNullOrEmpty(jwt))
             {
                 return RedirectToAction("Login", "AuthView");
             }
 
-            // Set the JWT token in the response cookies
             HttpContext.Response.Cookies.Append("jwt", jwt, new CookieOptions
             {
                 HttpOnly = true,
@@ -540,7 +505,6 @@ namespace flashcardApp.Controllers
                 SameSite = SameSiteMode.Strict
             });
 
-            // Continue with the regular action
             var set = await _context.FlashcardSets
                 .Include(s => s.Flashcards)
                 .FirstOrDefaultAsync(s => s.Id == id);
@@ -550,10 +514,8 @@ namespace flashcardApp.Controllers
                 return NotFound();
             }
 
-            // Check visibility permissions for private sets
             if (set.Visibility == Visibility.Private)
             {
-                // Validate the JWT token manually
                 var tokenHandler = new JwtSecurityTokenHandler();
                 var jsonTokenObj = tokenHandler.ReadToken(jwt) as JwtSecurityToken;
 
@@ -570,11 +532,9 @@ namespace flashcardApp.Controllers
 
                 var userIdFromToken = int.Parse(userIdClaim.Value);
 
-                // Check if the user is an admin
                 var userTypeClaim = jsonTokenObj.Claims.FirstOrDefault(c => c.Type == "UserType");
                 bool isAdmin = userTypeClaim != null && userTypeClaim.Value == "Admin";
 
-                // Allow access if user is the owner or an admin
                 if (set.UserId != userIdFromToken && !isAdmin)
                 {
                     return Forbid();
@@ -591,17 +551,15 @@ namespace flashcardApp.Controllers
             return View();
         }
 
-        // POST: /FlashcardsView/Create (with JWT form handling)
+        // POST: /FlashcardsView/Create (+ JWT)
         [HttpPost]
         public IActionResult Create(string jwt)
         {
-            // Process the JWT token
             if (string.IsNullOrEmpty(jwt))
             {
                 return RedirectToAction("Login", "AuthView");
             }
 
-            // Set the JWT token in the response cookies
             HttpContext.Response.Cookies.Append("jwt", jwt, new CookieOptions
             {
                 HttpOnly = true,
@@ -609,7 +567,6 @@ namespace flashcardApp.Controllers
                 SameSite = SameSiteMode.Strict
             });
 
-            // Continue to the Create view
             return View();
         }
 
@@ -620,21 +577,17 @@ namespace flashcardApp.Controllers
             Console.WriteLine("Edit (GET) action called for id " + id);
             Console.WriteLine("Token provided as query parameter: " + (token != null ? "Yes (length: " + token.Length + ")" : "No"));
 
-            // Log authorization status
             Console.WriteLine("Request Authorization Header: " + (Request.Headers.ContainsKey("Authorization") ? Request.Headers["Authorization"].ToString() : "None"));
             Console.WriteLine("User authenticated: " + (User.Identity?.IsAuthenticated == true ? "Yes" : "No"));
 
-            // Try to verify the user through various methods (token in query, Authorization header, or already authenticated)
             int userId;
 
-            // First check if user is already authenticated through standard mechanisms
             if (User.Identity?.IsAuthenticated == true)
             {
                 Console.WriteLine("User is already authenticated via standard mechanisms");
                 userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
                 Console.WriteLine("Using authenticated user ID: " + userId);
             }
-            // Then try using the token provided as parameter
             else if (!string.IsNullOrEmpty(token))
             {
                 Console.WriteLine("Using token provided as parameter");
@@ -657,7 +610,6 @@ namespace flashcardApp.Controllers
                     return RedirectToAction("Login", "AuthView");
                 }
             }
-            // Finally try using Authorization header
             else if (Request.Headers.ContainsKey("Authorization"))
             {
                 Console.WriteLine("Using Authorization header");
@@ -704,12 +656,10 @@ namespace flashcardApp.Controllers
                 return NotFound();
             }
 
-            // Check if user is the owner or an admin
             bool isAdmin = User.HasClaim(c => c.Type == "UserType" && c.Value == "Admin") || 
                           User.HasClaim(c => c.Type == ClaimTypes.Role && c.Value == "Admin") ||
                           User.IsInRole("Admin");
 
-            // Log the authorization check
             Console.WriteLine($"Edit authorization check: UserId={userId}, SetOwner={set.UserId}, IsAdmin={isAdmin}");
             
             if (set.UserId != userId && !isAdmin)
@@ -722,7 +672,7 @@ namespace flashcardApp.Controllers
             return View(set);
         }
 
-        // POST: /FlashcardsView/Edit/5 (with JWT form handling)
+        // POST: /FlashcardsView/Edit/5 (+ JWT)
         [HttpPost]
         public async Task<IActionResult> EditPost(int id, string jwt)
         {
@@ -732,7 +682,6 @@ namespace flashcardApp.Controllers
                 return RedirectToAction("Login", "AuthView");
             }
 
-            // Set the JWT token in the response cookies
             HttpContext.Response.Cookies.Append("jwt", jwt, new CookieOptions
             {
                 HttpOnly = true,
@@ -740,7 +689,6 @@ namespace flashcardApp.Controllers
                 SameSite = SameSiteMode.Strict
             });
 
-            // Manually validate the token to check ownership
             var handler = new JwtSecurityTokenHandler();
             var jsonToken = handler.ReadToken(jwt) as JwtSecurityToken;
 
@@ -757,7 +705,6 @@ namespace flashcardApp.Controllers
 
             var userId = int.Parse(userIdClaim.Value);
 
-            // Check if the set exists and the user is the owner or an admin
             var set = await _context.FlashcardSets
                 .Include(s => s.Flashcards)
                 .Include(s => s.Tags)
@@ -768,7 +715,6 @@ namespace flashcardApp.Controllers
                 return NotFound();
             }
 
-            // Check if user is an admin (from token claims)
             var userTypeClaim = jsonToken.Claims.FirstOrDefault(c => c.Type == "UserType");
             var roleClaim = jsonToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role);
             
@@ -793,19 +739,15 @@ namespace flashcardApp.Controllers
         {
             Console.WriteLine("Friends (GET) action called");
 
-            // Log token information
             Console.WriteLine($"Token param provided: {!string.IsNullOrEmpty(token)}");
             Console.WriteLine($"Auth header present: {Request.Headers.ContainsKey("Authorization")}");
 
-            // If token is provided in the query string but not in headers,
-            // manually add it to the authorization header for subsequent requests
             if (!string.IsNullOrEmpty(token) && !Request.Headers.ContainsKey("Authorization"))
             {
                 Console.WriteLine("Using token from query parameter for authentication in Friends view");
                 HttpContext.Items["ManualToken"] = token;
             }
 
-            // Make sure we have a valid user ID in the claims
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userIdClaim))
@@ -814,7 +756,6 @@ namespace flashcardApp.Controllers
 
                 string extractedToken = null;
 
-                // Check for JWT token in Authorization header (primary method)
                 string authHeader = Request.Headers["Authorization"];
                 if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
                 {
@@ -822,14 +763,12 @@ namespace flashcardApp.Controllers
                     Console.WriteLine($"Found JWT in Authorization header: {extractedToken.Substring(0, Math.Min(20, extractedToken.Length))}...");
                 }
 
-                // Check for token as a query parameter as a fallback
                 if (string.IsNullOrEmpty(extractedToken) && Request.Query.TryGetValue("token", out var queryToken))
                 {
                     extractedToken = queryToken.ToString();
                     Console.WriteLine($"Found JWT in query parameter: {extractedToken.Substring(0, Math.Min(20, extractedToken.Length))}...");
                 }
 
-                // Check for JWT in cookie as last resort
                 if (string.IsNullOrEmpty(extractedToken) && Request.Cookies.TryGetValue("jwt", out string jwtFromCookie))
                 {
                     extractedToken = jwtFromCookie;
@@ -849,30 +788,30 @@ namespace flashcardApp.Controllers
             Console.WriteLine($"Using claim-based authentication for Friends, user ID: {userIdClaim}");
             var userId = int.Parse(userIdClaim);
 
-            // Get all pending friend requests received by the user
+            // get all waiting friend requests received by the user
             var receivedRequests = await _context.FriendRequests
                 .Where(r => r.ReceiverId == userId && r.Status == FriendRequestStatus.Pending)
                 .Include(r => r.Sender)
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
 
-            // Get all friend requests sent by the user
+            // get all friend requests sent by the user
             var sentRequests = await _context.FriendRequests
                 .Where(r => r.SenderId == userId)
                 .Include(r => r.Receiver)
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
 
-            // Get all friends of the user
+            // get all friends of the user
             var friends = new List<User>();
 
-            // Get friends where the user is UserId1
+            // get friends where the user is UserId1
             var friendships1 = await _context.Friends
                 .Where(f => f.UserId1 == userId)
                 .Include(f => f.User2)
                 .ToListAsync();
 
-            // Get friends where the user is UserId2
+            // get friends where the user is UserId2
             var friendships2 = await _context.Friends
                 .Where(f => f.UserId2 == userId)
                 .Include(f => f.User1)
@@ -884,7 +823,6 @@ namespace flashcardApp.Controllers
             // Add User1 objects from friendships2
             friends.AddRange(friendships2.Select(f => f.User1));
 
-            // Create the view model
             var model = new
             {
                 ReceivedRequests = receivedRequests,
@@ -902,7 +840,6 @@ namespace flashcardApp.Controllers
         {
             var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
 
-            // Find the target user
             var targetUser = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
             if (targetUser == null)
             {
@@ -910,14 +847,14 @@ namespace flashcardApp.Controllers
                 return RedirectToAction(nameof(Friends));
             }
 
-            // Don't allow sending request to self
+            // users cannot send requests to theirselves
             if (targetUser.Id == currentUserId)
             {
                 TempData["ErrorMessage"] = "Kendinize arkadaşlık isteği gönderemezsiniz.";
                 return RedirectToAction(nameof(Friends));
             }
 
-            // Check if already friends
+            // is already friend with the target user?
             var existingFriendship = await _context.Friends
                 .AnyAsync(f => (f.UserId1 == currentUserId && f.UserId2 == targetUser.Id) ||
                               (f.UserId1 == targetUser.Id && f.UserId2 == currentUserId));
@@ -928,7 +865,7 @@ namespace flashcardApp.Controllers
                 return RedirectToAction(nameof(Friends));
             }
 
-            // Check if a request already exists
+            // is already sent/received a request?
             var existingRequest = await _context.FriendRequests
                 .FirstOrDefaultAsync(r =>
                     (r.SenderId == currentUserId && r.ReceiverId == targetUser.Id) ||
@@ -947,7 +884,6 @@ namespace flashcardApp.Controllers
                 return RedirectToAction(nameof(Friends));
             }
 
-            // Create the friend request
             var friendRequest = new FriendRequest
             {
                 SenderId = currentUserId,
@@ -970,7 +906,6 @@ namespace flashcardApp.Controllers
         {
             var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
 
-            // Find the request
             var request = await _context.FriendRequests
                 .FirstOrDefaultAsync(r => r.Id == requestId && r.ReceiverId == currentUserId);
 
@@ -980,10 +915,8 @@ namespace flashcardApp.Controllers
                 return RedirectToAction(nameof(Friends));
             }
 
-            // Update request status
             request.Status = FriendRequestStatus.Accepted;
 
-            // Create friendship
             var friendship = new Friend
             {
                 UserId1 = request.SenderId,
@@ -1005,7 +938,6 @@ namespace flashcardApp.Controllers
         {
             var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
 
-            // Find the request
             var request = await _context.FriendRequests
                 .FirstOrDefaultAsync(r => r.Id == requestId && r.ReceiverId == currentUserId);
 
@@ -1015,7 +947,6 @@ namespace flashcardApp.Controllers
                 return RedirectToAction(nameof(Friends));
             }
 
-            // Remove the request instead of just updating its status
             _context.FriendRequests.Remove(request);
             await _context.SaveChangesAsync();
 
@@ -1030,7 +961,6 @@ namespace flashcardApp.Controllers
         {
             var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
 
-            // Find the request
             var request = await _context.FriendRequests
                 .FirstOrDefaultAsync(r => r.Id == requestId && r.SenderId == currentUserId);
 
@@ -1040,7 +970,6 @@ namespace flashcardApp.Controllers
                 return RedirectToAction(nameof(Friends));
             }
 
-            // Remove the request
             _context.FriendRequests.Remove(request);
             await _context.SaveChangesAsync();
 
@@ -1055,7 +984,6 @@ namespace flashcardApp.Controllers
         {
             var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
 
-            // Find the friendship
             var friendship = await _context.Friends
                 .FirstOrDefaultAsync(f =>
                     (f.UserId1 == currentUserId && f.UserId2 == friendId) ||
@@ -1067,7 +995,6 @@ namespace flashcardApp.Controllers
                 return RedirectToAction(nameof(Friends));
             }
 
-            // Remove the friendship
             _context.Friends.Remove(friendship);
             await _context.SaveChangesAsync();
 
@@ -1081,7 +1008,6 @@ namespace flashcardApp.Controllers
         {
             Console.WriteLine($"UserSets action called for id: {id}, token provided: {!string.IsNullOrEmpty(token)}");
             
-            // Process token if provided in query string
             if (!string.IsNullOrEmpty(token) && !Request.Headers.ContainsKey("Authorization"))
             {
                 Console.WriteLine("Adding token to Authorization header");
@@ -1090,7 +1016,6 @@ namespace flashcardApp.Controllers
             
             var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
 
-            // Verify these users are friends
             var areFriends = await _context.Friends
                 .AnyAsync(f =>
                     (f.UserId1 == currentUserId && f.UserId2 == id) ||
@@ -1102,7 +1027,6 @@ namespace flashcardApp.Controllers
                 return RedirectToAction(nameof(Friends));
             }
 
-            // Get the user's sets - include friends-only sets if they are friends
             var sets = await _context.FlashcardSets
                 .Where(s => s.UserId == id &&
                            (s.Visibility == Visibility.Public ||
@@ -1127,19 +1051,15 @@ namespace flashcardApp.Controllers
         {
             Console.WriteLine("FriendSets (GET) action called");
 
-            // Log token information
             Console.WriteLine($"Token param provided: {!string.IsNullOrEmpty(token)}");
             Console.WriteLine($"Auth header present: {Request.Headers.ContainsKey("Authorization")}");
 
-            // If token is provided in the query string but not in headers,
-            // manually add it to the authorization header for subsequent requests
             if (!string.IsNullOrEmpty(token) && !Request.Headers.ContainsKey("Authorization"))
             {
                 Console.WriteLine("Using token from query parameter for authentication in FriendSets view");
                 HttpContext.Items["ManualToken"] = token;
             }
 
-            // Make sure we have a valid user ID in the claims
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userIdClaim))
@@ -1148,7 +1068,6 @@ namespace flashcardApp.Controllers
 
                 string extractedToken = null;
 
-                // Check for JWT token in Authorization header (primary method)
                 string authHeader = Request.Headers["Authorization"];
                 if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
                 {
@@ -1156,14 +1075,12 @@ namespace flashcardApp.Controllers
                     Console.WriteLine($"Found JWT in Authorization header: {extractedToken.Substring(0, Math.Min(20, extractedToken.Length))}...");
                 }
 
-                // Check for token as a query parameter as a fallback
                 if (string.IsNullOrEmpty(extractedToken) && Request.Query.TryGetValue("token", out var queryToken))
                 {
                     extractedToken = queryToken.ToString();
                     Console.WriteLine($"Found JWT in query parameter: {extractedToken.Substring(0, Math.Min(20, extractedToken.Length))}...");
                 }
 
-                // Check for JWT in cookie as last resort
                 if (string.IsNullOrEmpty(extractedToken) && Request.Cookies.TryGetValue("jwt", out string jwtFromCookie))
                 {
                     extractedToken = jwtFromCookie;
@@ -1183,26 +1100,21 @@ namespace flashcardApp.Controllers
             Console.WriteLine($"Using claim-based authentication for FriendSets, user ID: {userIdClaim}");
             var currentUserId = int.Parse(userIdClaim);
 
-            // Get all friends of the user
             var friendIds = new List<int>();
 
-            // Get friends where the user is UserId1
             var friendships1 = await _context.Friends
                 .Where(f => f.UserId1 == currentUserId)
                 .Select(f => f.UserId2)
                 .ToListAsync();
 
-            // Get friends where the user is UserId2
             var friendships2 = await _context.Friends
                 .Where(f => f.UserId2 == currentUserId)
                 .Select(f => f.UserId1)
                 .ToListAsync();
 
-            // Combine all friend IDs
             friendIds.AddRange(friendships1);
             friendIds.AddRange(friendships2);
 
-            // Get both public and friends-only flashcard sets
             var friendSets = await _context.FlashcardSets
                 .Where(s => friendIds.Contains(s.UserId) &&
                            (s.Visibility == Visibility.Public || s.Visibility == Visibility.Friends))
@@ -1214,7 +1126,7 @@ namespace flashcardApp.Controllers
             return View(friendSets);
         }
 
-        // POST: /FlashcardsView/Friends - For form submit with JWT
+        // POST: /FlashcardsView/Friends
         [HttpPost]
         [Route("FlashcardsView/Friends")]
         public async Task<IActionResult> FriendsPost(string token)
@@ -1229,7 +1141,6 @@ namespace flashcardApp.Controllers
 
             Console.WriteLine($"Received token in Friends POST: {token.Substring(0, Math.Min(20, token.Length))}...");
 
-            // Process the token to extract user ID
             var jwtHandler = new JwtSecurityTokenHandler();
             var parsedToken = jwtHandler.ReadToken(token) as JwtSecurityToken;
             var userIdClaim = parsedToken?.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
@@ -1243,42 +1154,34 @@ namespace flashcardApp.Controllers
             int userId = int.Parse(userIdClaim.Value);
             Console.WriteLine($"User ID from token: {userId}");
 
-            // Get all pending friend requests received by the user
             var receivedRequests = await _context.FriendRequests
                 .Where(r => r.ReceiverId == userId && r.Status == FriendRequestStatus.Pending)
                 .Include(r => r.Sender)
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
 
-            // Get all friend requests sent by the user
             var sentRequests = await _context.FriendRequests
                 .Where(r => r.SenderId == userId)
                 .Include(r => r.Receiver)
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
 
-            // Get all friends of the user
             var friends = new List<User>();
 
-            // Get friends where the user is UserId1
             var friendships1 = await _context.Friends
                 .Where(f => f.UserId1 == userId)
                 .Include(f => f.User2)
                 .ToListAsync();
 
-            // Get friends where the user is UserId2
             var friendships2 = await _context.Friends
                 .Where(f => f.UserId2 == userId)
                 .Include(f => f.User1)
                 .ToListAsync();
 
-            // Add User2 objects from friendships1
             friends.AddRange(friendships1.Select(f => f.User2));
 
-            // Add User1 objects from friendships2
             friends.AddRange(friendships2.Select(f => f.User1));
 
-            // Create the view model
             var model = new
             {
                 ReceivedRequests = receivedRequests,
@@ -1289,7 +1192,7 @@ namespace flashcardApp.Controllers
             return View("Friends", model);
         }
 
-        // POST: /FlashcardsView/FriendSets - For form submit with JWT
+        // POST: /FlashcardsView/FriendSets
         [HttpPost]
         [Route("FlashcardsView/FriendSets")]
         public async Task<IActionResult> FriendSetsPost(string token)
@@ -1304,7 +1207,6 @@ namespace flashcardApp.Controllers
 
             Console.WriteLine($"Received token in FriendSets POST: {token.Substring(0, Math.Min(20, token.Length))}...");
 
-            // Process the token to extract user ID
             var jwtHandler = new JwtSecurityTokenHandler();
             var parsedToken = jwtHandler.ReadToken(token) as JwtSecurityToken;
             var userIdClaim = parsedToken?.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
@@ -1318,26 +1220,21 @@ namespace flashcardApp.Controllers
             int currentUserId = int.Parse(userIdClaim.Value);
             Console.WriteLine($"User ID from token: {currentUserId}");
 
-            // Get all friends of the user
             var friendIds = new List<int>();
 
-            // Get friends where the user is UserId1
             var friendships1 = await _context.Friends
                 .Where(f => f.UserId1 == currentUserId)
                 .Select(f => f.UserId2)
                 .ToListAsync();
 
-            // Get friends where the user is UserId2
             var friendships2 = await _context.Friends
                 .Where(f => f.UserId2 == currentUserId)
                 .Select(f => f.UserId1)
                 .ToListAsync();
 
-            // Combine all friend IDs
             friendIds.AddRange(friendships1);
             friendIds.AddRange(friendships2);
 
-            // Get both public and friends-only flashcard sets
             var friendSets = await _context.FlashcardSets
                 .Where(s => friendIds.Contains(s.UserId) &&
                            (s.Visibility == Visibility.Public || s.Visibility == Visibility.Friends))
@@ -1356,7 +1253,6 @@ namespace flashcardApp.Controllers
         {
             var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
 
-            // Get count of pending friend requests received by the current user
             var pendingRequestsCount = await _context.FriendRequests
                 .CountAsync(r => r.ReceiverId == userId && r.Status == FriendRequestStatus.Pending);
 
@@ -1370,20 +1266,17 @@ namespace flashcardApp.Controllers
         {
             var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
 
-            // Find the target user
             var targetUser = await _context.Users.FirstOrDefaultAsync(u => u.Username == model.Username);
             if (targetUser == null)
             {
                 return NotFound(new { message = "Kullanıcı bulunamadı." });
             }
 
-            // Don't allow sending request to self
             if (targetUser.Id == currentUserId)
             {
                 return BadRequest(new { message = "Kendinize arkadaşlık isteği gönderemezsiniz." });
             }
 
-            // Check if already friends
             var existingFriendship = await _context.Friends
                 .AnyAsync(f => (f.UserId1 == currentUserId && f.UserId2 == targetUser.Id) ||
                               (f.UserId1 == targetUser.Id && f.UserId2 == currentUserId));
@@ -1393,7 +1286,6 @@ namespace flashcardApp.Controllers
                 return BadRequest(new { message = "Bu kullanıcı zaten arkadaşınız." });
             }
 
-            // Check if a request already exists
             var existingRequest = await _context.FriendRequests
                 .FirstOrDefaultAsync(r =>
                     (r.SenderId == currentUserId && r.ReceiverId == targetUser.Id) ||
@@ -1411,7 +1303,6 @@ namespace flashcardApp.Controllers
                 }
             }
 
-            // Create the friend request
             var friendRequest = new FriendRequest
             {
                 SenderId = currentUserId,
@@ -1442,10 +1333,8 @@ namespace flashcardApp.Controllers
                 return NotFound(new { message = "İstek bulunamadı." });
             }
 
-            // Update request status
             request.Status = FriendRequestStatus.Accepted;
 
-            // Create friendship
             var friendship = new Friend
             {
                 UserId1 = request.SenderId,
@@ -1466,7 +1355,6 @@ namespace flashcardApp.Controllers
         {
             var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
 
-            // Find the request
             var request = await _context.FriendRequests
                 .FirstOrDefaultAsync(r => r.Id == model.RequestId && r.ReceiverId == currentUserId);
 
@@ -1475,7 +1363,6 @@ namespace flashcardApp.Controllers
                 return NotFound(new { message = "İstek bulunamadı." });
             }
 
-            // Remove the request instead of just updating its status
             _context.FriendRequests.Remove(request);
             await _context.SaveChangesAsync();
 
@@ -1491,7 +1378,6 @@ namespace flashcardApp.Controllers
             
             Console.WriteLine($"[DEBUG] Remove friend API called - currentUserId: {currentUserId}, friendId: {model.FriendId}");
 
-            // Find the friendship
             var friendship = await _context.Friends
                 .FirstOrDefaultAsync(f =>
                     (f.UserId1 == currentUserId && f.UserId2 == model.FriendId) ||
@@ -1502,14 +1388,12 @@ namespace flashcardApp.Controllers
                 return NotFound(new { message = "Arkadaşlık bulunamadı." });
             }
 
-            // Remove the friendship
             _context.Friends.Remove(friendship);
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Arkadaşlık silindi." });
         }
 
-        // Models for API requests
         public class ApiRequestModel
         {
             public string Username { get; set; }

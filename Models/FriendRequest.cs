@@ -17,7 +17,7 @@ namespace flashcardApp.Models
         public FriendRequestStatus Status { get; set; } = FriendRequestStatus.Pending;
         public DateTime CreatedAt { get; set; }
 
-        // Navigation properties
+        // navigation
         public User Sender { get; set; } = null!;
         public User Receiver { get; set; } = null!;
     }

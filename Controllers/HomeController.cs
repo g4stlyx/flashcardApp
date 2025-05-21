@@ -20,7 +20,7 @@ public class HomeController : Controller
 
     public IActionResult Index()
     {
-        // Check if user is logged in and is admin
+        // is user logged in? is admin?
         if (User.Identity.IsAuthenticated)
         {
             bool isAdmin = User.HasClaim(c => c.Type == "UserType" && c.Value == "Admin") ||

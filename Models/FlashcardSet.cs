@@ -4,9 +4,9 @@ using System.Collections.Generic;
 namespace flashcardApp.Models
 {    public enum Visibility
     {
-        Public = 0,   // Maps to 'public' in the database
-        Friends = 1,  // Maps to 'friends' in the database
-        Private = 2   // Maps to 'private' in the database
+        Public = 0,   // 'public' in db
+        Friends = 1,  // 'friends' in db
+        Private = 2   // 'private' in db
     }
 
     public class FlashcardSet
@@ -20,14 +20,14 @@ namespace flashcardApp.Models
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
 
-        // Navigation properties
+        // Navigation
         public User User { get; set; } = null!;
         public ICollection<Flashcard> Flashcards { get; set; } = new List<Flashcard>();
         public ICollection<Tag> Tags { get; set; } = new List<Tag>();
         public ICollection<FavouriteSet> FavouritedBy { get; set; } = new List<FavouriteSet>();
         public ICollection<SetView> Views { get; set; } = new List<SetView>();
 
-        // Computed property to get the number of cards
+        // number of cards
         public int CardCount => Flashcards?.Count ?? 0;
     }
 }

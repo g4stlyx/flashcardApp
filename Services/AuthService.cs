@@ -34,7 +34,7 @@ namespace flashcardApp.Services
 
         public async Task<(bool Success, string Token, string Message)> LoginAsync(string username, string password)
         {
-            // Find user by username
+            // find user by username
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == username.ToLower());
             
             if (user == null)
@@ -42,7 +42,7 @@ namespace flashcardApp.Services
                 return (false, string.Empty, "Yanlış kullanıcı adı veya parola");
             }
 
-            // Verify the password with stored hash and salt
+            // verify password with hash and salt
             bool isValid = VerifyPassword(password, user.PasswordHash, user.Salt);
 
             if (!isValid)
@@ -50,7 +50,7 @@ namespace flashcardApp.Services
                 return (false, string.Empty, "Yanlış kullanıcı adı veya parola");
             }
 
-            // Generate JWT token
+            // generate jwt
             var token = GenerateJwtToken(user);
 
             return (true, token, "Giriş başarılı");
@@ -58,22 +58,21 @@ namespace flashcardApp.Services
 
         public async Task<(bool Success, string Message)> RegisterAsync(string username, string email, string password)
         {
-            // Check if username already exists
+            // if username exists
             if (await _context.Users.AnyAsync(u => u.Username.ToLower() == username.ToLower()))
             {
                 return (false, "Kullanıcı Adı zaten mevcut");
             }
 
-            // Check if email already exists
+            // if email exists
             if (await _context.Users.AnyAsync(u => u.Email.ToLower() == email.ToLower()))
             {
                 return (false, "Email zaten mevcut");
             }
 
-            // Hash the password
+            // hash password
             var (hash, salt) = HashPassword(password);
 
-            // Create new user
             var user = new User
             {
                 Username = username,
@@ -154,7 +153,7 @@ namespace flashcardApp.Services
                 return false;
             }
 
-            // Check if token is expired
+            // is token expired?
             var expiryUnixTime = principal.Claims
                 .Where(x => x.Type == JwtRegisteredClaimNames.Exp)
                 .Select(x => long.Parse(x.Value))
@@ -167,20 +166,17 @@ namespace flashcardApp.Services
 
         public (string Hash, string Salt) HashPassword(string password)
         {
-            // Generate a random salt
-            byte[] saltBytes = new byte[32]; // 32 bytes = 256 bits
+            // generate a random salt
+            byte[] saltBytes = new byte[32]; // 32 bytes
             using (var rng = RandomNumberGenerator.Create())
             {
                 rng.GetBytes(saltBytes);
             }
 
-            // Convert salt to base64 string for storage
             var salt = Convert.ToBase64String(saltBytes);
             
-            // Get the hash using Argon2id
             byte[] hashBytes = HashPasswordWithArgon2id(password, saltBytes);
             
-            // Convert hash to base64 string for storage
             var hash = Convert.ToBase64String(hashBytes);
             
             return (hash, salt);
@@ -197,22 +193,20 @@ namespace flashcardApp.Services
 
         private byte[] HashPasswordWithArgon2id(string password, byte[] salt)
         {
-            // Combine password with pepper before hashing
             string pepperedPassword = password + _pepper;
             byte[] passwordBytes = Encoding.UTF8.GetBytes(pepperedPassword);
 
-            // Create Argon2id instance
             using var argon2 = new Argon2id(passwordBytes)
             {
                 Salt = salt,
-                DegreeOfParallelism = 8, // Number of threads to use
-                MemorySize = 65536,      // 64MB of memory
-                Iterations = 4,          // Number of iterations
-                KnownSecret = null,      // Additional secret if needed (we're using pepper separately)
-                AssociatedData = null    // Additional data if needed
+                DegreeOfParallelism = 8, // # threads
+                MemorySize = 65536,      // 64MB memory
+                Iterations = 4,          // # iterations
+                KnownSecret = null,      // no need, i used pepper
+                AssociatedData = null    // extra data
             };
 
-            return argon2.GetBytes(32); // Get 32 bytes (256 bits) hash
+            return argon2.GetBytes(32); // get 256 bits
         }
     }
 }

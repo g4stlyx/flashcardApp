@@ -10,7 +10,7 @@ namespace flashcardApp.Models
         public string? ViewerIpHash { get; set; }
         public DateTime ViewedAt { get; set; }
 
-        // Navigation properties
+        // navigation
         public User? User { get; set; }
         public FlashcardSet FlashcardSet { get; set; } = null!;
     }

@@ -62,7 +62,6 @@
                         
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary">Seti Güncelle</button>
-                            @* !TODO: silmeden, güncellemeden emin misiniz diye sor *@
                             <button type="button" id="deleteSetBtn" class="btn btn-danger">Seti Sil</button>
                             <a asp-action="Set" asp-route-id="@Model.Id" class="btn btn-outline-secondary">İptal Et</a>
                         </div>
@@ -207,7 +206,6 @@
             let itemToDelete = null;
             let isEditMode = false;
             
-            // Update Set Details
             $('#updateSetForm').submit(function(e) {
                 e.preventDefault();
                 
@@ -232,16 +230,13 @@
                 });
             });
             
-            // Delete Set
             $('#deleteSetBtn').click(function() {
                 $('#deleteConfirmMessage').text('Are you sure you want to delete this flashcard set? All flashcards will be permanently deleted.');
                 itemToDelete = { type: 'set', id: setId };
                 $('#deleteConfirmModal').modal('show');
             });
             
-            // Handle Flashcard Form
             $('#addFlashcardModal').on('show.bs.modal', function (e) {
-                // Reset form if not triggered by edit button
                 if (!isEditMode) {
                     $('#flashcardForm')[0].reset();
                     $('#flashcardId').val(0);
@@ -250,7 +245,6 @@
                 isEditMode = false;
             });
             
-            // Save Flashcard (Create or Update)
             $('#saveFlashcardBtn').click(function() {
                 const flashcardId = $('#flashcardId').val();
                 const flashcardData = {
@@ -261,7 +255,6 @@
                     imageUrl: $('#imageUrl').val() || null
                 };
                 if (flashcardId == 0) {
-                    // Validate flashcardData
                     if (!flashcardData.term || flashcardData.term.trim() === '') {
                         alert('Term is required');
                         return;
@@ -274,7 +267,6 @@
                     
                     console.log('Creating flashcard with data:', flashcardData);
                     
-                    // Create new flashcard
                     $.ajax({
                         url: '/api/flashcards',
                         type: 'POST',
@@ -287,9 +279,8 @@
                             console.log('Flashcard created successfully:', response);
                             $('#addFlashcardModal').modal('hide');
                             
-                            // Give a slight delay before reloading to ensure the server has processed the data
                             setTimeout(function() {
-                                location.reload(); // Reload to show the new flashcard
+                                location.reload();
                             }, 500);
                         },
                         error: function(xhr) {
@@ -299,8 +290,6 @@
                             console.error('Response:', xhr.responseText);
                             
                             if (xhr.status === 200 || xhr.status === 201) {
-                                // Sometimes the server returns success but the client reports an error
-                                // This could happen with parsing JSON or other client-side issues
                                 console.log('Server returned success code but client reported error. Proceeding anyway.');
                                 $('#addFlashcardModal').modal('hide');
                                 setTimeout(function() {
@@ -312,7 +301,6 @@
                             let errorMsg = 'Unknown error';
                             try {
                                 if (xhr.responseJSON) {
-                                    // If we have direct responseJSON, use it
                                     if (xhr.responseJSON.message) {
                                         errorMsg = xhr.responseJSON.message;
                                     } else if (xhr.responseJSON.errors) {
@@ -322,7 +310,6 @@
                                         }
                                     }
                                 } else if (xhr.responseText) {
-                                    // Try to parse the response text as JSON
                                     try {
                                         const response = JSON.parse(xhr.responseText);
                                         if (response.errors) {
@@ -334,7 +321,6 @@
                                             errorMsg = response.message || response.title || 'Server error';
                                         }
                                     } catch (e) {
-                                        // If not valid JSON, use responseText directly
                                         errorMsg = xhr.responseText;
                                     }
                                 }
@@ -346,7 +332,6 @@
                         }
                     });
                 } else {
-                    // Update existing flashcard
                     $.ajax({
                         url: `/api/flashcards/${flashcardId}`,
                         type: 'PUT',
@@ -354,7 +339,7 @@
                         data: JSON.stringify(flashcardData),
                         success: function() {
                             $('#addFlashcardModal').modal('hide');
-                            location.reload(); // Reload to show changes
+                            location.reload();
                         },
                         error: function(xhr) {
                             alert('Error updating flashcard: ' + (xhr.responseJSON?.message || 'Unknown error'));
@@ -371,17 +356,14 @@
                 const imageUrl = $(this).data('image-url');
                 const example = $(this).data('example');
                 
-                // Set form values
                 $('#flashcardId').val(id);
                 $('#term').val(term);
                 $('#definition').val(definition);
                 $('#imageUrl').val(imageUrl);
                 $('#exampleSentence').val(example);
                 
-                // Update modal title
                 $('#addFlashcardModalLabel').text('Edit Flashcard');
                 
-                // Set edit mode and show modal
                 isEditMode = true;
                 $('#addFlashcardModal').modal('show');
             });
@@ -394,7 +376,7 @@
                 $('#deleteConfirmModal').modal('show');
             });
             
-            // Confirm Delete (Set or Flashcard)
+            // confirm delete (Set and Flashcard)
             $('#confirmDeleteBtn').click(function() {
                 if (!itemToDelete) return;
                 
@@ -404,7 +386,7 @@
                         url: `/api/flashcard-sets/${itemToDelete.id}`,
                         type: 'DELETE',
                         success: function() {
-                            window.location.href = '/FlashcardsView/MySets'; // Redirect to my sets
+                            window.location.href = '/FlashcardsView/MySets';
                         },
                         error: function(xhr) {
                             alert('Error deleting set: ' + (xhr.responseJSON?.message || 'Unknown error'));
@@ -420,7 +402,6 @@
                             $(`tr[data-id="${itemToDelete.id}"]`).remove();
                             $('#deleteConfirmModal').modal('hide');
                             
-                            // Reload if all flashcards are deleted
                             if ($('#flashcardsList tbody tr').length === 0) {
                                 location.reload();
                             }
@@ -433,7 +414,6 @@
                 }
         });
             
-            // Image preview functionality
             $('#previewImageBtn').click(function() {
                 const imageUrl = $('#imageUrl').val().trim();
                 const previewContainer = $('#imagePreviewContainer');
@@ -443,11 +423,9 @@
                     return;
                 }
                 
-                // Show loading
                 previewContainer.removeClass('d-none');
                 previewContainer.html('<div class="py-3"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>');
                 
-                // Try to load the image
                 const img = new Image();
                 img.onload = function() {
                     previewContainer.empty();
@@ -465,18 +443,15 @@
                 img.src = imageUrl;
             });
             
-            // Auto-add token to all AJAX requests for this page
             const token = localStorage.getItem("token");
             if (token) {
                 console.log("Setting up token for all AJAX requests on Edit page");
-                // Add the token to the header of all AJAX requests
                 $.ajaxSetup({
                     beforeSend: function(xhr) {
                         xhr.setRequestHeader("Authorization", "Bearer " + token);
                     }
                 });
                 
-                // Add hidden input with token to updateSetForm
                 if (!$("#updateSetForm input[name='jwt']").length) {
                     $("#updateSetForm").append(`<input type="hidden" name="jwt" value="${token}">`);
                 }

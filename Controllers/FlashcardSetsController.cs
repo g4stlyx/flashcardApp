@@ -22,6 +22,7 @@ namespace flashcardApp.Controllers
         {
             _context = context;
         }
+        
         // GET: api/flashcard-sets/test-auth
         [HttpGet("test-auth")]
         [JwtAuthorize("Registered")]
@@ -81,10 +82,10 @@ namespace flashcardApp.Controllers
                 return NotFound();
             }
 
-            // Check if the set is private
+            // is the set private?
             if (set.Visibility == Visibility.Private)
             {
-                // Only allow the owner to view private sets
+                // only owners
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (string.IsNullOrEmpty(userId) || set.UserId != int.Parse(userId))
                 {
@@ -92,12 +93,11 @@ namespace flashcardApp.Controllers
                 }
             }
 
-            // Load related data
             _context.Entry(set).Reference(s => s.User).Load();
             _context.Entry(set).Collection(s => s.Flashcards).Load();
             _context.Entry(set).Collection(s => s.Tags).Load();
 
-            // Record view if user is authenticated
+            // increase view count if user is authenticated
             if (User.Identity.IsAuthenticated)
             {
                 var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
@@ -131,12 +131,13 @@ namespace flashcardApp.Controllers
                 }),
                 Tags = set.Tags.Select(t => t.TagName)
             });
-        }        // POST: api/flashcard-sets
+        }
+
+        // POST: api/flashcard-sets
         [HttpPost]
         [JwtAuthorize("Registered")]
         public IActionResult CreateSet([FromBody] FlashcardSetRequest request)
         {
-            // Log request received and headers
             Console.WriteLine("CreateSet request received from: " + HttpContext.Connection.RemoteIpAddress);
             Console.WriteLine("Content-Type: " + Request.ContentType);
 
@@ -152,18 +153,16 @@ namespace flashcardApp.Controllers
                 }
             }
 
-            // Log request details for debugging
             Console.WriteLine("CreateSet called with request: " + (request != null ?
                 $"Title={request.Title}, Description={request.Description?.Substring(0, Math.Min(20, request.Description?.Length ?? 0))}" :
                 "null"));
 
-            // Log authentication status
             Console.WriteLine($"User authenticated: {User.Identity.IsAuthenticated}");
             if (User.Identity.IsAuthenticated)
             {
                 Console.WriteLine($"User claims: {string.Join(", ", User.Claims.Select(c => $"{c.Type}={c.Value}"))}");
             }
-            // Log model validation details
+
             Console.WriteLine("ModelState.IsValid: " + ModelState.IsValid);
 
             foreach (var state in ModelState)
@@ -193,12 +192,12 @@ namespace flashcardApp.Controllers
                             kvp => kvp.Value.Errors.Select(e => e.ErrorMessage).ToList()
                         )
                 });
-            }            try
+            }
+            try
             {
                 var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
                 Console.WriteLine($"User ID from claims: {userId}");
 
-                // Log the exact value of the visibility enum to help with debugging
                 Console.WriteLine($"Visibility value: {(int)request.Visibility} ({request.Visibility})");
 
                 var set = new FlashcardSet
@@ -212,10 +211,9 @@ namespace flashcardApp.Controllers
                     UpdatedAt = DateTime.UtcNow,
                 };
 
-                // Check if we can convert the enum to string as expected
                 string visibilityString = Enum.GetName(typeof(Visibility), request.Visibility)?.ToLower();
                 Console.WriteLine($"Converted visibility string: {visibilityString}");
-                
+
                 _context.FlashcardSets.Add(set);
                 _context.SaveChanges();
                 Console.WriteLine($"Successfully created set with ID: {set.Id}");
@@ -226,16 +224,16 @@ namespace flashcardApp.Controllers
             {
                 Console.WriteLine($"Database error creating set: {dbEx.Message}");
                 Console.WriteLine($"Inner exception: {dbEx.InnerException?.Message}");
-                
-                // Check specifically for MySQL data truncation errors
+
                 if (dbEx.InnerException?.Message?.Contains("truncated") == true)
                 {
-                    return BadRequest(new { 
-                        message = "Invalid value for one or more fields. Please check the visibility setting.", 
-                        detail = dbEx.InnerException.Message 
+                    return BadRequest(new
+                    {
+                        message = "Invalid value for one or more fields. Please check the visibility setting.",
+                        detail = dbEx.InnerException.Message
                     });
                 }
-                
+
                 return BadRequest(new { message = "Database error while creating set", detail = dbEx.InnerException?.Message });
             }
             catch (Exception ex)
